@@ -55,12 +55,12 @@ async fn get_stats(State(db_path): State<DbPath>) -> Json<Stats> {
     let conn = open_db(&db_path).expect("Failed to open database");
 
     let total_blocks: u64 = conn
-        .query_row("SELECT COUNT(*) FROM blob_blocks", [], |row| row.get(0))
+        .query_row("SELECT COUNT(*) FROM blocks", [], |row| row.get(0))
         .unwrap_or(0);
 
     let total_blobs: u64 = conn
         .query_row(
-            "SELECT COALESCE(SUM(total_blobs), 0) FROM blob_blocks",
+            "SELECT COALESCE(SUM(total_blobs), 0) FROM blocks",
             [],
             |row| row.get(0),
         )
@@ -68,21 +68,19 @@ async fn get_stats(State(db_path): State<DbPath>) -> Json<Stats> {
 
     let total_transactions: u64 = conn
         .query_row(
-            "SELECT COALESCE(SUM(blob_tx_count), 0) FROM blob_blocks",
+            "SELECT COALESCE(SUM(blob_tx_count), 0) FROM blocks",
             [],
             |row| row.get(0),
         )
         .unwrap_or(0);
 
     let latest_block: Option<u64> = conn
-        .query_row("SELECT MAX(block_number) FROM blob_blocks", [], |row| {
-            row.get(0)
-        })
+        .query_row("SELECT MAX(block_number) FROM blocks", [], |row| row.get(0))
         .ok();
 
     let avg_blob_gas_price: f64 = conn
         .query_row(
-            "SELECT COALESCE(AVG(blob_gas_price), 0) FROM blob_blocks",
+            "SELECT COALESCE(AVG(blob_gas_price), 0) FROM blocks",
             [],
             |row| row.get(0),
         )
@@ -110,7 +108,7 @@ async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<BlobBlock>
     let mut stmt = conn
         .prepare(
             "SELECT block_number, blob_tx_count, total_blobs, blob_gas_used, blob_gas_price
-             FROM blob_blocks ORDER BY block_number DESC LIMIT 50",
+             FROM blocks ORDER BY block_number DESC LIMIT 50",
         )
         .unwrap();
 
@@ -137,7 +135,7 @@ async fn get_top_senders(State(db_path): State<DbPath>) -> Json<Vec<BlobSender>>
     let mut stmt = conn
         .prepare(
             "SELECT address, tx_count, total_blobs
-             FROM blob_senders ORDER BY total_blobs DESC LIMIT 20",
+             FROM senders ORDER BY total_blobs DESC LIMIT 20",
         )
         .unwrap();
 
@@ -162,7 +160,7 @@ async fn get_chart_data(State(db_path): State<DbPath>) -> Json<ChartData> {
     let mut stmt = conn
         .prepare(
             "SELECT block_number, total_blobs, blob_gas_price
-             FROM blob_blocks ORDER BY block_number DESC LIMIT 100",
+             FROM blocks ORDER BY block_number DESC LIMIT 100",
         )
         .unwrap();
 
