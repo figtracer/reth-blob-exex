@@ -165,7 +165,7 @@ fn main() -> eyre::Result<()> {
 
         let handle = builder
             .node(EthereumNode::default())
-            .install_exex("BlobIndexer", |ctx| init(ctx, connection))
+            .install_exex("blob-exex", |ctx| init(ctx, connection))
             .launch_with_debug_capabilities()
             .await?;
 
