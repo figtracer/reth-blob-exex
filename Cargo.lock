@@ -1566,7 +1566,6 @@ dependencies = [
  "reth-testing-utils",
  "reth-tracing",
  "rusqlite",
- "tokio",
 ]
 
 [[package]]
