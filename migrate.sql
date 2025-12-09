@@ -30,16 +30,14 @@ CREATE TABLE IF NOT EXISTS blob_transactions (
     sender TEXT NOT NULL,
     blob_count INTEGER NOT NULL,
     gas_price INTEGER NOT NULL,
-    created_at INTEGER NOT NULL,
-    FOREIGN KEY (block_number) REFERENCES blocks(block_number)
+    created_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS blob_hashes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tx_hash TEXT NOT NULL,
     blob_hash TEXT NOT NULL,
-    blob_index INTEGER NOT NULL,
-    FOREIGN KEY (tx_hash) REFERENCES blob_transactions(tx_hash)
+    blob_index INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_blob_txs_block ON blob_transactions(block_number);

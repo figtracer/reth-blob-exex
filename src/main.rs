@@ -83,8 +83,7 @@ fn create_tables(conn: &Connection) -> rusqlite::Result<()> {
             sender TEXT NOT NULL,
             blob_count INTEGER NOT NULL,
             gas_price INTEGER NOT NULL,
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY (block_number) REFERENCES blocks(block_number)
+            created_at INTEGER NOT NULL
         )
         "#,
         (),
@@ -96,8 +95,7 @@ fn create_tables(conn: &Connection) -> rusqlite::Result<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tx_hash TEXT NOT NULL,
             blob_hash TEXT NOT NULL,
-            blob_index INTEGER NOT NULL,
-            FOREIGN KEY (tx_hash) REFERENCES blob_transactions(tx_hash)
+            blob_index INTEGER NOT NULL
         )
         "#,
         (),
