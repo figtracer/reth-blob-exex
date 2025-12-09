@@ -38,7 +38,13 @@ const chartOptions = {
   },
 };
 
-// Custom tooltip function that follows mouse
+// Track mouse Y position for dampened tooltip movement
+let mouseY = 0;
+document.addEventListener("mousemove", (e) => {
+  mouseY = e.clientY;
+});
+
+// Custom tooltip function that follows mouse with dampening
 function customTooltip(context) {
   let tooltipEl = document.getElementById("chartjs-tooltip");
 
@@ -51,7 +57,7 @@ function customTooltip(context) {
     tooltipEl.style.opacity = 1;
     tooltipEl.style.pointerEvents = "none";
     tooltipEl.style.position = "absolute";
-    tooltipEl.style.transform = "translate(-50%, 0)";
+    tooltipEl.style.transform = "translate(-50%, -100%)";
     tooltipEl.style.border = "1px solid #45475a";
     tooltipEl.style.padding = "8px 12px";
     tooltipEl.style.fontSize = "0.8rem";
@@ -85,11 +91,27 @@ function customTooltip(context) {
   }
 
   const position = context.chart.canvas.getBoundingClientRect();
+  const chartTop = position.top + window.pageYOffset;
+  const chartBottom = position.bottom + window.pageYOffset;
+  const chartHeight = chartBottom - chartTop;
+
+  // Dampen vertical movement - tooltip moves only 30% of the chart height
+  // centered around the middle of the chart
+  const chartMiddle = chartTop + chartHeight * 0.4;
+  const dampening = 0.3;
+  const mouseOffset = (mouseY + window.pageYOffset - chartMiddle) * dampening;
+  const tooltipY = chartMiddle + mouseOffset - 20;
+
+  // Clamp to stay within chart bounds
+  const clampedY = Math.max(
+    chartTop + 10,
+    Math.min(chartBottom - 60, tooltipY),
+  );
+
   tooltipEl.style.opacity = 1;
-  // Position tooltip at top of chart area, aligned with data point horizontally
   tooltipEl.style.left =
     position.left + window.pageXOffset + tooltipModel.caretX + "px";
-  tooltipEl.style.top = position.top + window.pageYOffset + 10 + "px";
+  tooltipEl.style.top = clampedY + "px";
 }
 
 // Initialize charts
