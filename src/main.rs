@@ -174,26 +174,24 @@ fn process_chain(db: &Connection, chain: &Chain) -> eyre::Result<()> {
             }
         }
 
-        if blob_tx_count > 0 {
-            db.execute(
-                "INSERT OR REPLACE INTO blocks VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    block_number,
-                    block_timestamp,
-                    blob_tx_count,
-                    total_blobs,
-                    blob_gas_used as i64,
-                    blob_gas_price,
-                ),
-            )?;
+        db.execute(
+            "INSERT OR REPLACE INTO blocks VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                block_number,
+                block_timestamp,
+                blob_tx_count,
+                total_blobs,
+                blob_gas_used as i64,
+                blob_gas_price,
+            ),
+        )?;
 
-            info!(
-                block = block_number,
-                txs = blob_tx_count,
-                blobs = total_blobs,
-                "📦 ExBlob"
-            );
-        }
+        info!(
+            block = block_number,
+            txs = blob_tx_count,
+            blobs = total_blobs,
+            "📦 ExBlob"
+        );
     }
     Ok(())
 }
