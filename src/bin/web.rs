@@ -36,6 +36,8 @@ struct Sender {
     address: String,
     tx_count: u64,
     total_blobs: u64,
+    total_blob_size: u64,
+    chain: String,
 }
 
 #[derive(Serialize)]
@@ -177,6 +179,9 @@ async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<Block>> {
     Json(blocks)
 }
 
+// Each blob is 128KB (131072 bytes) per EIP-4844
+const BLOB_SIZE_BYTES: u64 = 131072;
+
 async fn get_top_senders(State(db_path): State<DbPath>) -> Json<Vec<Sender>> {
     let conn = open_db(&db_path).expect("Failed to open database");
 
@@ -189,14 +194,24 @@ async fn get_top_senders(State(db_path): State<DbPath>) -> Json<Vec<Sender>> {
 
     let senders: Vec<Sender> = stmt
         .query_map([], |row| {
-            Ok(Sender {
-                address: row.get(0)?,
-                tx_count: row.get(1)?,
-                total_blobs: row.get(2)?,
-            })
+            let address: String = row.get(0)?;
+            let tx_count: u64 = row.get(1)?;
+            let total_blobs: u64 = row.get(2)?;
+            Ok((address, tx_count, total_blobs))
         })
         .unwrap()
         .filter_map(|r| r.ok())
+        .map(|(address, tx_count, total_blobs)| {
+            let chain = identify_chain(&address);
+            let total_blob_size = total_blobs * BLOB_SIZE_BYTES;
+            Sender {
+                address,
+                tx_count,
+                total_blobs,
+                total_blob_size,
+                chain,
+            }
+        })
         .collect();
 
     Json(senders)

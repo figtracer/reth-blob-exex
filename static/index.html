@@ -254,38 +254,90 @@
                 background: var(--ctp-surface2);
             }
 
-            .time-selector {
-                display: flex;
-                gap: 0.5rem;
-                margin-bottom: 2rem;
-                justify-content: center;
-                padding: 1rem;
-                background: var(--ctp-mantle);
-                border: 1px solid var(--ctp-surface0);
-                border-radius: 8px;
+            .time-picker {
+                position: relative;
+                display: inline-block;
             }
 
-            .time-btn {
-                padding: 0.5rem 1.5rem;
+            .time-picker-btn {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1rem;
                 background: var(--ctp-surface0);
                 border: 1px solid var(--ctp-surface1);
-                border-radius: 6px;
+                border-radius: 4px;
                 color: var(--ctp-text);
                 font-size: 0.875rem;
-                font-weight: 500;
                 cursor: pointer;
-                transition: all 0.2s ease;
+                transition: all 0.15s ease;
             }
 
-            .time-btn:hover {
+            .time-picker-btn:hover {
                 background: var(--ctp-surface1);
                 border-color: var(--ctp-surface2);
             }
 
-            .time-btn.active {
-                background: var(--ctp-blue);
-                border-color: var(--ctp-blue);
-                color: var(--ctp-base);
+            .time-picker-btn svg {
+                width: 16px;
+                height: 16px;
+                color: var(--ctp-subtext0);
+            }
+
+            .time-picker-dropdown {
+                position: absolute;
+                top: calc(100% + 4px);
+                right: 0;
+                min-width: 180px;
+                background: var(--ctp-mantle);
+                border: 1px solid var(--ctp-surface1);
+                border-radius: 4px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                z-index: 100;
+                display: none;
+            }
+
+            .time-picker-dropdown.open {
+                display: block;
+            }
+
+            .time-picker-section {
+                padding: 0.5rem 0;
+                border-bottom: 1px solid var(--ctp-surface0);
+            }
+
+            .time-picker-section:last-child {
+                border-bottom: none;
+            }
+
+            .time-picker-label {
+                padding: 0.25rem 1rem;
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: var(--ctp-subtext0);
+            }
+
+            .time-picker-option {
+                display: block;
+                width: 100%;
+                padding: 0.5rem 1rem;
+                background: none;
+                border: none;
+                text-align: left;
+                color: var(--ctp-text);
+                font-size: 0.875rem;
+                cursor: pointer;
+                transition: background 0.1s ease;
+            }
+
+            .time-picker-option:hover {
+                background: var(--ctp-surface0);
+            }
+
+            .time-picker-option.active {
+                background: var(--ctp-surface0);
+                color: var(--ctp-blue);
             }
 
             .chain-badge {
@@ -343,24 +395,111 @@
         <div class="container">
             <header>
                 <h1>📦 Ex<span>Blob</span></h1>
-                <div class="status">
-                    <div class="status-dot"></div>
-                    <span id="last-update">Connecting...</span>
+                <div style="display: flex; align-items: center; gap: 1.5rem">
+                    <div class="time-picker">
+                        <button class="time-picker-btn" id="time-picker-btn">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span id="time-picker-label">Last 1 hour</span>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                style="margin-left: 0.25rem"
+                            >
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div
+                            class="time-picker-dropdown"
+                            id="time-picker-dropdown"
+                        >
+                            <div class="time-picker-section">
+                                <div class="time-picker-label">
+                                    Quick ranges
+                                </div>
+                                <button
+                                    class="time-picker-option active"
+                                    data-hours="1"
+                                    data-label="Last 1 hour"
+                                >
+                                    Last 1 hour
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-hours="3"
+                                    data-label="Last 3 hours"
+                                >
+                                    Last 3 hours
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-hours="6"
+                                    data-label="Last 6 hours"
+                                >
+                                    Last 6 hours
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-hours="12"
+                                    data-label="Last 12 hours"
+                                >
+                                    Last 12 hours
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-hours="24"
+                                    data-label="Last 24 hours"
+                                >
+                                    Last 24 hours
+                                </button>
+                            </div>
+                            <div class="time-picker-section">
+                                <div class="time-picker-label">
+                                    Longer ranges
+                                </div>
+                                <button
+                                    class="time-picker-option"
+                                    data-hours="48"
+                                    data-label="Last 2 days"
+                                >
+                                    Last 2 days
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-hours="168"
+                                    data-label="Last 7 days"
+                                >
+                                    Last 7 days
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="status">
+                        <div class="status-dot"></div>
+                        <span id="last-update">Connecting...</span>
+                    </div>
                 </div>
             </header>
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h3>Total Blocks</h3>
-                    <div class="value blue" id="total-blocks">-</div>
-                </div>
-                <div class="stat-card">
                     <h3>Total Blobs</h3>
                     <div class="value teal" id="total-blobs">-</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Total Transactions</h3>
-                    <div class="value peach" id="total-txs">-</div>
                 </div>
                 <div class="stat-card">
                     <h3>Avg Blobs/Block</h3>
@@ -374,14 +513,6 @@
                     <h3>Avg Gas Price</h3>
                     <div class="value yellow" id="avg-gas">-</div>
                 </div>
-            </div>
-
-            <div class="time-selector">
-                <button class="time-btn active" data-hours="1">1H</button>
-                <button class="time-btn" data-hours="6">6H</button>
-                <button class="time-btn" data-hours="12">12H</button>
-                <button class="time-btn" data-hours="24">24H</button>
-                <button class="time-btn" data-hours="48">48H</button>
             </div>
 
             <div class="charts-grid">
@@ -430,9 +561,11 @@
                         <table>
                             <thead>
                                 <tr>
+                                    <th>Chain</th>
                                     <th>Address</th>
                                     <th>Txs</th>
                                     <th>Blobs</th>
+                                    <th>Size</th>
                                 </tr>
                             </thead>
                             <tbody id="senders-table"></tbody>
@@ -648,6 +781,18 @@
                 return (wei / 1e9).toFixed(2) + " Gwei";
             }
 
+            function formatBytes(bytes) {
+                if (bytes === 0) return "0 B";
+                const k = 1024;
+                const sizes = ["B", "KB", "MB", "GB", "TB"];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (
+                    parseFloat((bytes / Math.pow(k, i)).toFixed(2)) +
+                    " " +
+                    sizes[i]
+                );
+            }
+
             function truncateAddress(addr) {
                 return addr.slice(0, 10) + "..." + addr.slice(-8);
             }
@@ -668,12 +813,8 @@
                     const res = await fetch("/api/stats");
                     const data = await res.json();
 
-                    document.getElementById("total-blocks").textContent =
-                        formatNumber(data.total_blocks);
                     document.getElementById("total-blobs").textContent =
                         formatNumber(data.total_blobs);
-                    document.getElementById("total-txs").textContent =
-                        formatNumber(data.total_transactions);
                     document.getElementById("avg-blobs").textContent =
                         data.avg_blobs_per_block.toFixed(2);
                     document.getElementById("latest-block").textContent =
@@ -721,9 +862,11 @@
                         .map(
                             (s) => `
                     <tr>
+                        <td><span class="chain-badge ${getChainBadgeClass(s.chain)}">${s.chain}</span></td>
                         <td class="address" title="${s.address}">${truncateAddress(s.address)}</td>
                         <td>${formatNumber(s.tx_count)}</td>
                         <td>${formatNumber(s.total_blobs)}</td>
+                        <td>${formatBytes(s.total_blob_size)}</td>
                     </tr>
                 `,
                         )
@@ -810,6 +953,47 @@
                 ]);
                 updateTimestamp();
             }
+
+            // Time picker dropdown functionality
+            const timePickerBtn = document.getElementById("time-picker-btn");
+            const timePickerDropdown = document.getElementById(
+                "time-picker-dropdown",
+            );
+            const timePickerLabel =
+                document.getElementById("time-picker-label");
+            const timePickerOptions = document.querySelectorAll(
+                ".time-picker-option",
+            );
+
+            timePickerBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                timePickerDropdown.classList.toggle("open");
+            });
+
+            document.addEventListener("click", () => {
+                timePickerDropdown.classList.remove("open");
+            });
+
+            timePickerOptions.forEach((option) => {
+                option.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const hours = parseInt(option.dataset.hours);
+                    const label = option.dataset.label;
+
+                    selectedHours = hours;
+                    timePickerLabel.textContent = label;
+
+                    timePickerOptions.forEach((opt) =>
+                        opt.classList.remove("active"),
+                    );
+                    option.classList.add("active");
+
+                    timePickerDropdown.classList.remove("open");
+
+                    fetchChartData();
+                    fetchChainStats();
+                });
+            });
 
             initCharts();
             refresh();
