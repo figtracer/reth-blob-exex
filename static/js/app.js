@@ -318,6 +318,12 @@ function formatGwei(wei) {
   if (gwei < 0.0001) {
     return gwei.toExponential(2) + " Gwei";
   }
+  if (gwei >= 1000) {
+    return gwei.toFixed(2) + " Gwei";
+  }
+  if (gwei >= 100) {
+    return gwei.toFixed(3) + " Gwei";
+  }
   return gwei.toFixed(4) + " Gwei";
 }
 
