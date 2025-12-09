@@ -110,7 +110,8 @@ function initCharts() {
         ...chartOptions.scales,
         y: {
           ...chartOptions.scales.y,
-          beginAtZero: true,
+          beginAtZero: false,
+          grace: "20%",
           ticks: {
             ...chartOptions.scales.y.ticks,
             precision: 4,
