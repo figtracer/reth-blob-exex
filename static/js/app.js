@@ -104,16 +104,24 @@ function initCharts() {
     },
     options: {
       ...chartOptions,
+      plugins: {
+        ...chartOptions.plugins,
+        tooltip: {
+          ...chartOptions.plugins.tooltip,
+          callbacks: {
+            title: (ctx) => `Block ${ctx[0].label}`,
+            label: (ctx) => `${ctx.parsed.y.toFixed(4)} Gwei`,
+          },
+        },
+      },
       scales: {
         ...chartOptions.scales,
         y: {
           ...chartOptions.scales.y,
-          beginAtZero: false,
-          grace: "20%",
+          beginAtZero: true,
           ticks: {
             ...chartOptions.scales.y.ticks,
-            precision: 4,
-            callback: (value) => value.toFixed(4),
+            callback: (value) => Math.round(value),
           },
         },
       },

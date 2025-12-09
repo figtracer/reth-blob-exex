@@ -270,6 +270,11 @@ header {
     color: var(--ctp-yellow);
 }
 
+/* Make Blob Gas Price stat smaller to match other stat card heights */
+#avg-gas {
+    font-size: 1.4rem;
+}
+
 /* Charts */
 .charts-grid {
     display: grid;
