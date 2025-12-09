@@ -62,6 +62,11 @@ struct ChartData {
     gas_prices: Vec<f64>,
 }
 
+#[derive(Deserialize)]
+struct ChartQuery {
+    blocks: Option<u64>,
+}
+
 #[derive(Serialize)]
 struct BlobTransaction {
     tx_hash: String,
@@ -332,32 +337,45 @@ async fn get_top_senders(State(db_path): State<DbPath>) -> Json<Vec<Sender>> {
 
 async fn get_chart_data(
     State(db_path): State<DbPath>,
-    Query(params): Query<TimeRangeQuery>,
+    Query(params): Query<ChartQuery>,
 ) -> Json<ChartData> {
     let conn = open_db(&db_path).expect("Failed to open database");
 
-    let hours = params.hours.unwrap_or(1);
-    let time_limit = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64
-        - (hours as i64 * 3600);
+    // Get the last N blocks (default 100)
+    let num_blocks = params.blocks.unwrap_or(100);
 
+    // First, get the latest block number
+    let latest_block: u64 = conn
+        .query_row("SELECT MAX(block_number) FROM blocks", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    if latest_block == 0 {
+        return Json(ChartData {
+            labels: Vec::new(),
+            blobs: Vec::new(),
+            gas_prices: Vec::new(),
+        });
+    }
+
+    let start_block = latest_block.saturating_sub(num_blocks - 1);
+
+    // Query all blocks in range from the blocks table (these all have blob data)
     let mut stmt = conn
         .prepare(
             "SELECT block_number, total_blobs, gas_price
              FROM blocks
-             WHERE block_timestamp >= ?
+             WHERE block_number >= ? AND block_number <= ?
              ORDER BY block_number ASC",
         )
         .unwrap();
 
-    let mut labels = Vec::new();
-    let mut blobs = Vec::new();
-    let mut gas_prices = Vec::new();
+    // Build a map of block_number -> (blobs, gas_price)
+    let mut block_data: std::collections::HashMap<u64, (u64, u64)> =
+        std::collections::HashMap::new();
+    let mut last_gas_price: u64 = 0;
 
     let rows = stmt
-        .query_map([time_limit], |row| {
+        .query_map([start_block, latest_block], |row| {
             Ok((
                 row.get::<_, u64>(0)?,
                 row.get::<_, u64>(1)?,
@@ -367,9 +385,26 @@ async fn get_chart_data(
         .unwrap();
 
     for row in rows.flatten() {
-        labels.push(row.0);
-        blobs.push(row.1);
-        gas_prices.push(row.2 as f64 / 1e9);
+        block_data.insert(row.0, (row.1, row.2));
+        last_gas_price = row.2;
+    }
+
+    // Generate data for every block in range
+    let mut labels = Vec::with_capacity(num_blocks as usize);
+    let mut blobs = Vec::with_capacity(num_blocks as usize);
+    let mut gas_prices = Vec::with_capacity(num_blocks as usize);
+
+    for block_num in start_block..=latest_block {
+        labels.push(block_num);
+        if let Some((blob_count, gas_price)) = block_data.get(&block_num) {
+            blobs.push(*blob_count);
+            gas_prices.push(*gas_price as f64 / 1e9);
+            last_gas_price = *gas_price;
+        } else {
+            // Block without blob transactions - show 0 blobs, use last known gas price
+            blobs.push(0);
+            gas_prices.push(last_gas_price as f64 / 1e9);
+        }
     }
 
     Json(ChartData {

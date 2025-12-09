@@ -42,7 +42,7 @@
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
-                            <span id="time-picker-label">Last 1 hour</span>
+                            <span id="time-picker-label">Last 100 blocks</span>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 24 24"
@@ -62,61 +62,42 @@
                         >
                             <div class="time-picker-section">
                                 <div class="time-picker-label">
-                                    Quick ranges
+                                    Block ranges
                                 </div>
+                                <button
+                                    class="time-picker-option"
+                                    data-blocks="50"
+                                    data-label="Last 50 blocks"
+                                >
+                                    Last 50 blocks
+                                </button>
                                 <button
                                     class="time-picker-option active"
-                                    data-hours="1"
-                                    data-label="Last 1 hour"
+                                    data-blocks="100"
+                                    data-label="Last 100 blocks"
                                 >
-                                    Last 1 hour
+                                    Last 100 blocks
                                 </button>
                                 <button
                                     class="time-picker-option"
-                                    data-hours="3"
-                                    data-label="Last 3 hours"
+                                    data-blocks="200"
+                                    data-label="Last 200 blocks"
                                 >
-                                    Last 3 hours
+                                    Last 200 blocks
                                 </button>
                                 <button
                                     class="time-picker-option"
-                                    data-hours="6"
-                                    data-label="Last 6 hours"
+                                    data-blocks="500"
+                                    data-label="Last 500 blocks"
                                 >
-                                    Last 6 hours
+                                    Last 500 blocks
                                 </button>
                                 <button
                                     class="time-picker-option"
-                                    data-hours="12"
-                                    data-label="Last 12 hours"
+                                    data-blocks="1000"
+                                    data-label="Last 1000 blocks"
                                 >
-                                    Last 12 hours
-                                </button>
-                                <button
-                                    class="time-picker-option"
-                                    data-hours="24"
-                                    data-label="Last 24 hours"
-                                >
-                                    Last 24 hours
-                                </button>
-                            </div>
-                            <div class="time-picker-section">
-                                <div class="time-picker-label">
-                                    Longer ranges
-                                </div>
-                                <button
-                                    class="time-picker-option"
-                                    data-hours="48"
-                                    data-label="Last 2 days"
-                                >
-                                    Last 2 days
-                                </button>
-                                <button
-                                    class="time-picker-option"
-                                    data-hours="168"
-                                    data-label="Last 7 days"
-                                >
-                                    Last 7 days
+                                    Last 1000 blocks
                                 </button>
                             </div>
                         </div>
@@ -259,6 +240,6 @@
             </div>
         </div>
 
-        <script src="/js/app.js?v=7"></script>
+        <script src="/js/app.js?v=8"></script>
     </body>
 </html>

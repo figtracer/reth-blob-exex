@@ -4,7 +4,7 @@ const BLOB_SIZE_BYTES = 131072; // 128 KiB per blob
 
 // State
 let blobsChart, gasChart, chainChart;
-let selectedHours = 1;
+let selectedBlocks = 100;
 let blocksData = [];
 
 // Chart configuration
@@ -414,37 +414,17 @@ async function fetchSenders() {
 
 // Adaptive rendering: show all data for smaller datasets, use consistent
 // max-width rendering for larger datasets to maintain performance
-function adaptiveRender(labels, values, maxPoints = 500) {
-  if (labels.length <= maxPoints) {
-    // Show all data points
-    return { labels, values };
-  }
-
-  // For larger datasets, show the most recent maxPoints
-  // This is deterministic and consistent across polls
-  const startIndex = labels.length - maxPoints;
-  return {
-    labels: labels.slice(startIndex),
-    values: values.slice(startIndex),
-  };
-}
-
 async function fetchChartData() {
   try {
-    const res = await fetch(`/api/chart?hours=${selectedHours}`);
+    const res = await fetch(`/api/chart?blocks=${selectedBlocks}`);
     const data = await res.json();
 
-    // Use adaptive rendering to handle both small and large datasets
-    // This ensures consistent display on every poll
-    const blobsData = adaptiveRender(data.labels, data.blobs, 1000);
-    const gasData = adaptiveRender(data.labels, data.gas_prices, 1000);
-
-    blobsChart.data.labels = blobsData.labels;
-    blobsChart.data.datasets[0].data = blobsData.values;
+    blobsChart.data.labels = data.labels;
+    blobsChart.data.datasets[0].data = data.blobs;
     blobsChart.update("none");
 
-    gasChart.data.labels = gasData.labels;
-    gasChart.data.datasets[0].data = gasData.values;
+    gasChart.data.labels = data.labels;
+    gasChart.data.datasets[0].data = data.gas_prices;
     gasChart.update("none");
   } catch (e) {
     console.error("Failed to fetch chart data:", e);
@@ -453,7 +433,7 @@ async function fetchChartData() {
 
 async function fetchChainStats() {
   try {
-    const res = await fetch(`/api/chain-stats?hours=${selectedHours}`);
+    const res = await fetch(`/api/chain-stats?hours=24`);
     const data = await res.json();
 
     chainChart.data.labels = data.map((d) => d.chain);
@@ -525,10 +505,10 @@ function initTimePicker() {
   timePickerOptions.forEach((option) => {
     option.addEventListener("click", (e) => {
       e.stopPropagation();
-      const hours = parseInt(option.dataset.hours);
+      const blocks = parseInt(option.dataset.blocks);
       const label = option.dataset.label;
 
-      selectedHours = hours;
+      selectedBlocks = blocks;
       timePickerLabel.textContent = label;
 
       timePickerOptions.forEach((opt) => opt.classList.remove("active"));
