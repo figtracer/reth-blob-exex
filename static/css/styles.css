@@ -509,6 +509,46 @@ tr.clickable {
     background: #9d4edd;
     color: white;
 }
+.chain-metal {
+    background: #8b8b8b;
+    color: white;
+}
+.chain-abstract {
+    background: #a855f7;
+    color: white;
+}
+.chain-world {
+    background: #10b981;
+    color: white;
+}
+.chain-ink {
+    background: #3b82f6;
+    color: white;
+}
+.chain-mantle {
+    background: #000000;
+    color: white;
+}
+.chain-cyber {
+    background: #00ff88;
+    color: var(--ctp-base);
+}
+.chain-kroma {
+    background: #7c3aed;
+    color: white;
+}
+.chain-redstone {
+    background: #dc2626;
+    color: white;
+}
+.chain-fraxtal {
+    background: #818cf8;
+    color: white;
+}
+.chain-mint {
+    background: #4ade80;
+    color: var(--ctp-base);
+}
 .chain-other {
     background: var(--ctp-surface1);
     color: var(--ctp-text);

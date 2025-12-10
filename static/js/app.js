@@ -259,15 +259,33 @@ function initCharts() {
           label: "Blobs",
           data: [],
           backgroundColor: [
-            "#0052ff",
-            "#f38ba8",
-            "#28a0f0",
-            "#fab387",
-            "#cba6f7",
-            "#b4befe",
-            "#61dfff",
-            "#e81899",
-            "#585b70",
+            "#0052ff", // Base
+            "#f38ba8", // Optimism
+            "#28a0f0", // Arbitrum
+            "#fab387", // Scroll
+            "#cba6f7", // Starknet
+            "#b4befe", // zkSync
+            "#61dfff", // Linea
+            "#e81899", // Taiko
+            "#fcfc03", // Blast
+            "#5b5bd6", // Zora
+            "#dffe00", // Mode
+            "#00d4ff", // Soneium
+            "#ffd700", // Lighter
+            "#ff007a", // UniChain
+            "#ff6b35", // Katana
+            "#9d4edd", // Codex
+            "#8b8b8b", // Metal
+            "#a855f7", // Abstract
+            "#10b981", // World
+            "#3b82f6", // Ink
+            "#000000", // Mantle
+            "#00ff88", // Cyber
+            "#7c3aed", // Kroma
+            "#dc2626", // Redstone
+            "#818cf8", // Fraxtal
+            "#4ade80", // Mint
+            "#585b70", // Other
           ],
         },
       ],
@@ -363,12 +381,28 @@ function getChainBadgeClass(chain) {
   if (normalized.includes("arbitrum")) return "chain-arbitrum";
   if (normalized.includes("scroll")) return "chain-scroll";
   if (normalized.includes("starknet")) return "chain-starknet";
-  if (normalized.includes("zksync")) return "chain-zksync";
+  if (normalized.includes("zksync") || normalized.includes("zksyncera"))
+    return "chain-zksync";
   if (normalized.includes("linea")) return "chain-linea";
   if (normalized.includes("taiko")) return "chain-taiko";
   if (normalized.includes("blast")) return "chain-blast";
   if (normalized.includes("zora")) return "chain-zora";
   if (normalized.includes("mode")) return "chain-mode";
+  if (normalized.includes("soneium")) return "chain-soneium";
+  if (normalized.includes("lighter")) return "chain-lighter";
+  if (normalized.includes("unichain")) return "chain-unichain";
+  if (normalized.includes("katana")) return "chain-katana";
+  if (normalized.includes("codex")) return "chain-codex";
+  if (normalized.includes("metal")) return "chain-metal";
+  if (normalized.includes("abstract")) return "chain-abstract";
+  if (normalized.includes("world")) return "chain-world";
+  if (normalized.includes("ink")) return "chain-ink";
+  if (normalized.includes("mantle")) return "chain-mantle";
+  if (normalized.includes("cyber")) return "chain-cyber";
+  if (normalized.includes("kroma")) return "chain-kroma";
+  if (normalized.includes("redstone")) return "chain-redstone";
+  if (normalized.includes("fraxtal")) return "chain-fraxtal";
+  if (normalized.includes("mint")) return "chain-mint";
   return "chain-other";
 }
 
