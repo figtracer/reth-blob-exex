@@ -10,7 +10,7 @@
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="/css/styles.css?v=6" />
+        <link rel="stylesheet" href="/css/styles.css?v=7" />
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </head>
     <body>
@@ -18,6 +18,28 @@
             <div class="header-content">
                 <div class="header-left">
                     <div class="logo">EXBLOB</div>
+                    <div class="search-container">
+                        <input
+                            type="text"
+                            id="block-search"
+                            placeholder="Search block number..."
+                            class="search-input"
+                        />
+                        <button id="search-btn" class="search-btn">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="header-right">
                     <div class="time-picker">
@@ -90,6 +112,27 @@
                                     data-label="Last 1000 blocks"
                                 >
                                     Last 1000 blocks
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-blocks="2000"
+                                    data-label="Last 2000 blocks"
+                                >
+                                    Last 2000 blocks
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-blocks="5000"
+                                    data-label="Last 5000 blocks"
+                                >
+                                    Last 5000 blocks
+                                </button>
+                                <button
+                                    class="time-picker-option"
+                                    data-blocks="10000"
+                                    data-label="Last 10000 blocks"
+                                >
+                                    Last 10000 blocks
                                 </button>
                             </div>
                         </div>
@@ -232,6 +275,6 @@
             </div>
         </div>
 
-        <script src="/js/app.js?v=17"></script>
+        <script src="/js/app.js?v=18"></script>
     </body>
 </html>

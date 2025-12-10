@@ -540,12 +540,23 @@ async function fetchChartData() {
     const res = await fetch(`/api/chart?blocks=${selectedBlocks}`);
     const data = await res.json();
 
-    blobsChart.data.labels = data.labels;
-    blobsChart.data.datasets[0].data = data.blobs;
+    // For large datasets, sample the data to improve performance
+    let sampledData = data;
+    if (selectedBlocks > 2000) {
+      const sampleRate = Math.ceil(selectedBlocks / 1000);
+      sampledData = {
+        labels: data.labels.filter((_, i) => i % sampleRate === 0),
+        blobs: data.blobs.filter((_, i) => i % sampleRate === 0),
+        gas_prices: data.gas_prices.filter((_, i) => i % sampleRate === 0),
+      };
+    }
+
+    blobsChart.data.labels = sampledData.labels;
+    blobsChart.data.datasets[0].data = sampledData.blobs;
     blobsChart.update("none");
 
-    gasChart.data.labels = data.labels;
-    gasChart.data.datasets[0].data = data.gas_prices;
+    gasChart.data.labels = sampledData.labels;
+    gasChart.data.datasets[0].data = sampledData.gas_prices;
     gasChart.update("none");
   } catch (e) {
     console.error("Failed to fetch chart data:", e);
@@ -607,6 +618,32 @@ async function refresh() {
   updateTimestamp();
 }
 
+// Search for specific block
+async function searchBlock() {
+  const searchInput = document.getElementById("block-search");
+  const blockNumber = parseInt(searchInput.value.trim());
+
+  if (isNaN(blockNumber) || blockNumber < 0) {
+    alert("Please enter a valid block number");
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/block?block_number=${blockNumber}`);
+    const block = await res.json();
+
+    if (block) {
+      showBlockModal(block);
+      searchInput.value = "";
+    } else {
+      alert(`Block ${blockNumber} not found or has no blob transactions`);
+    }
+  } catch (e) {
+    console.error("Failed to search block:", e);
+    alert("Error searching for block");
+  }
+}
+
 // Initialize time picker
 function initTimePicker() {
   const timePickerBtn = document.getElementById("time-picker-btn");
@@ -643,6 +680,19 @@ function initTimePicker() {
   });
 }
 
+// Initialize search
+function initSearch() {
+  const searchBtn = document.getElementById("search-btn");
+  const searchInput = document.getElementById("block-search");
+
+  searchBtn.addEventListener("click", searchBlock);
+  searchInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      searchBlock();
+    }
+  });
+}
+
 // Initialize modal handlers
 function initModal() {
   document.getElementById("modal-close").addEventListener("click", closeModal);
@@ -658,10 +708,10 @@ function initModal() {
 function init() {
   initCharts();
   initTimePicker();
+  initSearch();
   initModal();
   refresh();
   setInterval(refresh, POLL_INTERVAL);
 }
 
-// Start when DOM is ready
 document.addEventListener("DOMContentLoaded", init);

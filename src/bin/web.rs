@@ -92,6 +92,11 @@ struct TimeRangeQuery {
     hours: Option<u64>,
 }
 
+#[derive(Deserialize)]
+struct BlockQuery {
+    block_number: u64,
+}
+
 // Known L2 sequencer/batcher addresses
 fn identify_chain(address: &str) -> String {
     let addr = address.to_lowercase();
@@ -538,6 +543,74 @@ async fn get_chain_stats(
     Json(stats)
 }
 
+async fn get_block(
+    State(db_path): State<DbPath>,
+    Query(params): Query<BlockQuery>,
+) -> Json<Option<Block>> {
+    let conn = open_db(&db_path).expect("Failed to open database");
+    let block_number = params.block_number;
+
+    // Check if block exists
+    let block_exists: Option<(u64, u64, u64, u64, u64)> = conn
+        .query_row(
+            "SELECT block_timestamp, tx_count, total_blobs, gas_used, gas_price
+             FROM blocks WHERE block_number = ?",
+            [block_number],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
+        )
+        .ok();
+
+    if let Some((block_timestamp, tx_count, total_blobs, gas_used, gas_price)) = block_exists {
+        // Fetch transactions for this block
+        let mut tx_stmt = conn
+            .prepare(
+                "SELECT tx_hash, sender, blob_count FROM blob_transactions WHERE block_number = ?",
+            )
+            .unwrap();
+
+        let transactions: Vec<BlockTransaction> = tx_stmt
+            .query_map([block_number], |row| {
+                let sender: String = row.get(1)?;
+                let blob_count: u64 = row.get(2)?;
+                Ok((row.get::<_, String>(0)?, sender, blob_count))
+            })
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .map(|(tx_hash, sender, blob_count)| {
+                let chain = identify_chain(&sender);
+                BlockTransaction {
+                    tx_hash,
+                    sender,
+                    blob_count,
+                    blob_size: blob_count * BLOB_SIZE_BYTES,
+                    chain,
+                }
+            })
+            .collect();
+
+        Json(Some(Block {
+            block_number,
+            block_timestamp,
+            tx_count,
+            total_blobs,
+            total_blob_size: total_blobs * BLOB_SIZE_BYTES,
+            gas_used,
+            gas_price,
+            transactions,
+        }))
+    } else {
+        Json(None)
+    }
+}
+
 async fn index() -> impl IntoResponse {
     (
         [(header::CONTENT_TYPE, "text/html")],
@@ -560,6 +633,7 @@ async fn main() -> eyre::Result<()> {
         .route("/", get(index))
         .route("/api/stats", get(get_stats))
         .route("/api/blocks", get(get_recent_blocks))
+        .route("/api/block", get(get_block))
         .route("/api/senders", get(get_top_senders))
         .route("/api/chart", get(get_chart_data))
         .route("/api/blob-transactions", get(get_blob_transactions))
