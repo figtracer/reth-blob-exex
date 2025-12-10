@@ -450,28 +450,28 @@ tr.clickable {
     color: white;
 }
 .chain-optimism {
-    background: var(--ctp-red);
-    color: var(--ctp-base);
+    background: #f38ba8;
+    color: #1e1e2e;
 }
 .chain-arbitrum {
     background: #28a0f0;
     color: white;
 }
 .chain-scroll {
-    background: var(--ctp-peach);
-    color: var(--ctp-base);
+    background: #fab387;
+    color: #1e1e2e;
 }
 .chain-starknet {
-    background: var(--ctp-mauve);
-    color: var(--ctp-base);
+    background: #cba6f7;
+    color: #1e1e2e;
 }
 .chain-zksync {
-    background: var(--ctp-lavender);
-    color: var(--ctp-base);
+    background: #b4befe;
+    color: #1e1e2e;
 }
 .chain-linea {
     background: #61dfff;
-    color: var(--ctp-base);
+    color: #1e1e2e;
 }
 .chain-taiko {
     background: #e81899;
@@ -479,7 +479,7 @@ tr.clickable {
 }
 .chain-blast {
     background: #fcfc03;
-    color: black;
+    color: #1e1e2e;
 }
 .chain-zora {
     background: #5b5bd6;
@@ -487,15 +487,15 @@ tr.clickable {
 }
 .chain-mode {
     background: #dffe00;
-    color: black;
+    color: #1e1e2e;
 }
 .chain-soneium {
     background: #00d4ff;
-    color: var(--ctp-base);
+    color: #1e1e2e;
 }
 .chain-lighter {
     background: #ffd700;
-    color: var(--ctp-base);
+    color: #1e1e2e;
 }
 .chain-unichain {
     background: #ff007a;
@@ -526,12 +526,13 @@ tr.clickable {
     color: white;
 }
 .chain-mantle {
-    background: #000000;
+    background: #1a1a2e;
     color: white;
+    border: 1px solid #585b70;
 }
 .chain-cyber {
     background: #00ff88;
-    color: var(--ctp-base);
+    color: #1e1e2e;
 }
 .chain-kroma {
     background: #7c3aed;
@@ -547,11 +548,11 @@ tr.clickable {
 }
 .chain-mint {
     background: #4ade80;
-    color: var(--ctp-base);
+    color: #1e1e2e;
 }
 .chain-other {
-    background: var(--ctp-surface1);
-    color: var(--ctp-text);
+    background: #585b70;
+    color: #cdd6f4;
 }
 
 /* Modal */

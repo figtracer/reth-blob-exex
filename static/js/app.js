@@ -2,6 +2,47 @@
 const POLL_INTERVAL = 3000;
 const BLOB_SIZE_BYTES = 131072; // 128 KiB per blob
 
+// Chain colors - single source of truth for both chart and badges
+const CHAIN_COLORS = {
+  base: "#0052ff",
+  optimism: "#f38ba8",
+  arbitrum: "#28a0f0",
+  scroll: "#fab387",
+  starknet: "#cba6f7",
+  zksync: "#b4befe",
+  linea: "#61dfff",
+  taiko: "#e81899",
+  blast: "#fcfc03",
+  zora: "#5b5bd6",
+  mode: "#dffe00",
+  soneium: "#00d4ff",
+  lighter: "#ffd700",
+  unichain: "#ff007a",
+  katana: "#ff6b35",
+  codex: "#9d4edd",
+  metal: "#8b8b8b",
+  abstract: "#a855f7",
+  world: "#10b981",
+  ink: "#3b82f6",
+  mantle: "#1a1a2e",
+  cyber: "#00ff88",
+  kroma: "#7c3aed",
+  redstone: "#dc2626",
+  fraxtal: "#818cf8",
+  mint: "#4ade80",
+  other: "#585b70",
+};
+
+function getChainColor(chainName) {
+  const normalized = chainName.toLowerCase().replace(/\s+/g, "");
+  for (const [key, color] of Object.entries(CHAIN_COLORS)) {
+    if (normalized.includes(key)) {
+      return color;
+    }
+  }
+  return CHAIN_COLORS.other;
+}
+
 // State
 let blobsChart, gasChart, chainChart;
 let selectedBlocks = 100;
@@ -258,35 +299,7 @@ function initCharts() {
         {
           label: "Blobs",
           data: [],
-          backgroundColor: [
-            "#0052ff", // Base
-            "#f38ba8", // Optimism
-            "#28a0f0", // Arbitrum
-            "#fab387", // Scroll
-            "#cba6f7", // Starknet
-            "#b4befe", // zkSync
-            "#61dfff", // Linea
-            "#e81899", // Taiko
-            "#fcfc03", // Blast
-            "#5b5bd6", // Zora
-            "#dffe00", // Mode
-            "#00d4ff", // Soneium
-            "#ffd700", // Lighter
-            "#ff007a", // UniChain
-            "#ff6b35", // Katana
-            "#9d4edd", // Codex
-            "#8b8b8b", // Metal
-            "#a855f7", // Abstract
-            "#10b981", // World
-            "#3b82f6", // Ink
-            "#000000", // Mantle
-            "#00ff88", // Cyber
-            "#7c3aed", // Kroma
-            "#dc2626", // Redstone
-            "#818cf8", // Fraxtal
-            "#4ade80", // Mint
-            "#585b70", // Other
-          ],
+          backgroundColor: [],
         },
       ],
     },
@@ -604,6 +617,9 @@ async function fetchChainStats() {
 
     chainChart.data.labels = data.map((d) => d.chain);
     chainChart.data.datasets[0].data = data.map((d) => d.percentage);
+    chainChart.data.datasets[0].backgroundColor = data.map((d) =>
+      getChainColor(d.chain),
+    );
     chainChart.update("none");
   } catch (e) {
     console.error("Failed to fetch chain stats:", e);
