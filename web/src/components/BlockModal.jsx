@@ -8,8 +8,33 @@ import {
 } from "../utils/format";
 import ChainBadge from "./ChainBadge";
 
+// BPO1 constants
+const BPO1_TARGET_BLOBS_PER_BLOCK = 10;
+const BPO1_MAX_BLOBS_PER_BLOCK = 15;
+const DATA_GAS_PER_BLOB = 131072;
+
 function BlockModal({ block, onClose }) {
   if (!block) return null;
+
+  // Calculate blob usage statistics
+  const targetGas = BPO1_TARGET_BLOBS_PER_BLOCK * DATA_GAS_PER_BLOB;
+  const maxGas = BPO1_MAX_BLOBS_PER_BLOCK * DATA_GAS_PER_BLOB;
+  const blobGasUsed = block.gas_used || 0;
+  const totalBlobs = block.total_blobs || 0;
+
+  // Blob Usage (KiB and percentage of max)
+  const blobUsageKiB = (totalBlobs * 128).toFixed(2);
+  const blobUsagePercent = (
+    (totalBlobs / BPO1_MAX_BLOBS_PER_BLOCK) *
+    100
+  ).toFixed(2);
+
+  // Blob Gas percentage (of max)
+  const blobGasPercent = ((blobGasUsed / maxGas) * 100).toFixed(2);
+
+  // Difference from target (as percentage)
+  const targetDiff = (((blobGasUsed - targetGas) / targetGas) * 100).toFixed(2);
+  const targetDiffSign = targetDiff >= 0 ? "+" : "";
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -78,6 +103,34 @@ function BlockModal({ block, onClose }) {
                 <div className="detail-label">Blob Gas Price</div>
                 <div className="detail-value">
                   {formatGwei(block.gas_price)}
+                </div>
+              </div>
+
+              <div className="detail-item">
+                <div className="detail-label">Blob Usage</div>
+                <div className="detail-value">
+                  {blobUsageKiB} KiB
+                  <span className="usage-percent"> / {blobUsagePercent}%</span>
+                </div>
+              </div>
+
+              <div className="detail-item">
+                <div className="detail-label">Blob Gas Used</div>
+                <div className="detail-value">
+                  {formatNumber(blobGasUsed)}
+                  <span className="usage-percent"> / {blobGasPercent}%</span>
+                  <div
+                    className="target-diff"
+                    style={{
+                      color:
+                        targetDiff >= 0
+                          ? "var(--accent-green)"
+                          : "var(--accent-red)",
+                    }}
+                  >
+                    {targetDiffSign}
+                    {targetDiff}% Blob Gas Target
+                  </div>
                 </div>
               </div>
             </div>
@@ -239,6 +292,18 @@ function BlockModal({ block, onClose }) {
 
         .detail-value.highlight {
           color: var(--accent-purple);
+          font-weight: 600;
+        }
+
+        .usage-percent {
+          color: var(--text-secondary);
+          font-size: 0.85rem;
+          margin-left: 0.25rem;
+        }
+
+        .target-diff {
+          font-size: 0.75rem;
+          margin-top: 0.25rem;
           font-weight: 600;
         }
 
