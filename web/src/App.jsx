@@ -55,7 +55,7 @@ function App() {
   // Search for a block
   const handleBlockSearch = async (blockNumber) => {
     try {
-      const res = await fetch(`/api/block?number=${blockNumber}`);
+      const res = await fetch(`/api/block?block_number=${blockNumber}`);
       if (res.ok) {
         const block = await res.json();
         setSelectedBlock(block);

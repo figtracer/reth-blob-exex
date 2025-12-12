@@ -211,14 +211,14 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
 
         .logo {
           position: relative;
-          height: 32px;
           display: flex;
           align-items: center;
           white-space: nowrap;
+          height: fit-content;
         }
 
         .logo-image {
-          height: 100%;
+          height: 32px;
           width: auto;
           display: block;
           position: relative;
@@ -229,16 +229,16 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
           position: absolute;
           top: 0;
           left: 0;
-          right: 0;
-          height: 60%;
+          width: 100%;
+          height: 100%;
           background: linear-gradient(
             180deg,
-            rgba(167, 139, 250, 0.4) 0%,
-            rgba(236, 72, 153, 0.3) 50%,
+            rgba(167, 139, 250, 0.3) 0%,
             transparent 100%
           );
           pointer-events: none;
           z-index: 2;
+          border-radius: 4px;
         }
 
         .search-wrapper {
@@ -535,8 +535,11 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
           }
 
           .logo {
-            height: 28px;
             justify-content: center;
+          }
+
+          .logo-image {
+            height: 28px;
           }
         }
       `}</style>
