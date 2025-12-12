@@ -161,10 +161,7 @@ function ChartsSection({ chartData, chainStats }) {
     }));
 
   const formatGwei = (value) => {
-    if (value < 0.01) return "<0.01";
-    if (value < 1) return value.toFixed(3);
-    if (value < 100) return value.toFixed(2);
-    return value.toFixed(0);
+    return value.toFixed(6);
   };
 
   return (
