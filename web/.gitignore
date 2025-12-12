@@ -23,7 +23,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Build output (goes to ../static)
-../static/index.html
-../static/assets/

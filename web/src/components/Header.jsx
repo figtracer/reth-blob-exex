@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Clock } from "lucide-react";
+import { Search, Clock, AlertCircle, Loader2 } from "lucide-react";
 
 const BLOCK_OPTIONS = [
   { value: 50, label: "Last 50 blocks" },
@@ -13,16 +13,46 @@ const BLOCK_OPTIONS = [
 function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
   const [searchValue, setSearchValue] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     const blockNumber = parseInt(searchValue);
-    if (!isNaN(blockNumber) && blockNumber > 0) {
-      onSearch(blockNumber);
-      setSearchValue("");
+
+    // Clear previous error
+    setSearchError("");
+
+    if (isNaN(blockNumber) || blockNumber <= 0) {
+      setSearchError("Please enter a valid block number");
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      const result = await onSearch(blockNumber);
+      if (result === false) {
+        setSearchError(`Block #${blockNumber} not found`);
+      } else {
+        setSearchValue("");
+      }
+    } catch (error) {
+      setSearchError("Failed to search block");
+    } finally {
+      setIsSearching(false);
     }
   };
+
+  // Clear error after 4 seconds
+  useEffect(() => {
+    if (searchError) {
+      const timer = setTimeout(() => setSearchError(""), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchError]);
 
   const formatLastUpdate = () => {
     if (!lastUpdate) return "Connecting...";
@@ -53,18 +83,45 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
         <div className="header-content">
           <div className="header-left">
             <div className="logo">EXBLOB</div>
-            <form className="search-form" onSubmit={handleSearch}>
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search block number..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-              />
-              <button type="submit" className="search-button">
-                <Search size={16} />
-              </button>
-            </form>
+            <div className="search-wrapper">
+              <form className="search-form" onSubmit={handleSearch}>
+                <div className="search-input-wrapper">
+                  <Search size={16} className="search-icon" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    className={`search-input ${searchError ? "has-error" : ""}`}
+                    placeholder="Search block number..."
+                    value={searchValue}
+                    onChange={(e) => {
+                      setSearchValue(e.target.value);
+                      setSearchError("");
+                    }}
+                    disabled={isSearching}
+                  />
+                  {isSearching && (
+                    <Loader2 size={16} className="search-loading" />
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="search-button"
+                  disabled={isSearching || !searchValue.trim()}
+                >
+                  {isSearching ? (
+                    <Loader2 size={16} className="spin" />
+                  ) : (
+                    "Search"
+                  )}
+                </button>
+              </form>
+              {searchError && (
+                <div className="search-error">
+                  <AlertCircle size={14} />
+                  <span>{searchError}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="header-right">
@@ -165,59 +222,156 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
           white-space: nowrap;
         }
 
+        .search-wrapper {
+          position: relative;
+          max-width: 400px;
+          width: 100%;
+        }
+
         .search-form {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          max-width: 300px;
-          width: 100%;
+        }
+
+        .search-input-wrapper {
+          position: relative;
+          flex: 1;
+          display: flex;
+          align-items: center;
+        }
+
+        .search-icon {
+          position: absolute;
+          left: 12px;
+          color: var(--text-tertiary);
+          pointer-events: none;
+        }
+
+        .search-loading {
+          position: absolute;
+          right: 12px;
+          color: var(--accent-purple);
+          animation: spin 1s linear infinite;
         }
 
         .search-input {
-          flex: 1;
-          padding: 0.5rem 0.75rem;
+          width: 100%;
+          padding: 0.625rem 2.5rem 0.625rem 2.5rem;
           background: var(--bg-tertiary);
           border: 1px solid var(--border-primary);
-          border-radius: 6px;
+          border-radius: 8px;
           color: var(--text-primary);
           font-size: 0.875rem;
           transition: all 0.2s;
         }
 
-        .search-input:hover {
+        .search-input:hover:not(:disabled) {
           border-color: var(--border-secondary);
+          background: var(--bg-card);
         }
 
         .search-input:focus {
           outline: none;
           border-color: var(--accent-purple);
           background: var(--bg-card);
+          box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
         }
 
         .search-input::placeholder {
           color: var(--text-tertiary);
         }
 
+        .search-input:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .search-input.has-error {
+          border-color: var(--error);
+          background: rgba(239, 68, 68, 0.05);
+        }
+
         .search-button {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 0.5rem;
-          background: var(--accent-purple);
+          padding: 0.625rem 1rem;
+          background: linear-gradient(
+            135deg,
+            var(--accent-purple) 0%,
+            #9333ea 100%
+          );
           border: none;
-          border-radius: 6px;
-          color: var(--bg-primary);
+          border-radius: 8px;
+          color: white;
+          font-size: 0.875rem;
+          font-weight: 500;
           cursor: pointer;
           transition: all 0.2s;
+          white-space: nowrap;
+          min-width: 80px;
         }
 
-        .search-button:hover {
-          background: var(--accent-purple-hover);
+        .search-button:hover:not(:disabled) {
+          background: linear-gradient(
+            135deg,
+            var(--accent-purple-hover) 0%,
+            #a855f7 100%
+          );
           transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
         }
 
-        .search-button:active {
+        .search-button:active:not(:disabled) {
           transform: translateY(0);
+        }
+
+        .search-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+
+        .search-error {
+          position: absolute;
+          top: calc(100% + 0.5rem);
+          left: 0;
+          right: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 6px;
+          color: var(--error);
+          font-size: 0.8125rem;
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
 
         .header-right {
@@ -313,6 +467,16 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
           animation: pulse 2s infinite;
         }
 
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+
         .status-text {
           font-size: 0.875rem;
           color: var(--text-secondary);
@@ -324,8 +488,8 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
             gap: 1rem;
           }
 
-          .search-form {
-            max-width: 200px;
+          .search-wrapper {
+            max-width: 280px;
           }
         }
 
@@ -336,21 +500,24 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
             gap: 1rem;
           }
 
-          .header-left,
-          .header-right {
-            width: 100%;
+          .header-left {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
           }
 
           .header-right {
+            width: 100%;
             justify-content: space-between;
           }
 
-          .search-form {
+          .search-wrapper {
             max-width: 100%;
           }
 
           .logo {
             font-size: 1.25rem;
+            text-align: center;
           }
         }
       `}</style>

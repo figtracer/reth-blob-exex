@@ -631,7 +631,7 @@ async fn get_block(
 async fn index() -> impl IntoResponse {
     (
         [(header::CONTENT_TYPE, "text/html")],
-        Html(include_str!("../../static/index.html")),
+        Html(include_str!("../../web/dist/index.html")),
     )
 }
 
@@ -644,7 +644,7 @@ async fn main() -> eyre::Result<()> {
 
     let db_path: DbPath = Arc::new(db_path);
 
-    let static_dir = std::env::var("BLOB_STATIC_DIR").unwrap_or_else(|_| "static".to_string());
+    let static_dir = std::env::var("BLOB_STATIC_DIR").unwrap_or_else(|_| "web/dist".to_string());
 
     let app = Router::new()
         .route("/", get(index))

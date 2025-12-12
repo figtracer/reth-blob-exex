@@ -1,33 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
-import { copyFileSync, mkdirSync, readdirSync, existsSync } from "fs";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    {
-      name: "copy-icons",
-      closeBundle() {
-        const iconsDir = path.resolve(__dirname, "../static/icons");
-        const outIconsDir = path.resolve(__dirname, "../static/icons");
-
-        // Icons are already in static/icons, no need to copy
-        // This plugin just ensures they're not deleted during build
-      },
-    },
-  ],
+  plugins: [react()],
   build: {
-    outDir: "../static",
-    emptyOutDir: false, // Changed to false to preserve icons folder
+    outDir: "dist",
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: undefined,
       },
     },
   },
-  publicDir: false, // We manage static assets manually
+  // public directory contains static assets like icons that are copied as-is to dist
+  publicDir: "public",
   server: {
     proxy: {
       "/api": {

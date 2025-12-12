@@ -59,12 +59,13 @@ function App() {
       if (res.ok) {
         const block = await res.json();
         setSelectedBlock(block);
+        return true;
       } else {
-        alert("Block not found");
+        return false;
       }
     } catch (error) {
       console.error("Error searching block:", error);
-      alert("Error searching block");
+      throw error;
     }
   };
 
