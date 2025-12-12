@@ -75,7 +75,7 @@ function BlockModal({ block, onClose }) {
               </div>
 
               <div className="detail-item">
-                <div className="detail-label">Gas Price</div>
+                <div className="detail-label">Blob Gas Price</div>
                 <div className="detail-value">
                   {formatGwei(block.gas_price)}
                 </div>
