@@ -16,18 +16,10 @@ const DATA_GAS_PER_BLOB = 131072;
 function BlockModal({ block, onClose }) {
   if (!block) return null;
 
-  // Calculate blob usage statistics
+  // Calculate blob gas statistics
   const targetGas = BPO1_TARGET_BLOBS_PER_BLOCK * DATA_GAS_PER_BLOB;
   const maxGas = BPO1_MAX_BLOBS_PER_BLOCK * DATA_GAS_PER_BLOB;
   const blobGasUsed = block.gas_used || 0;
-  const totalBlobs = block.total_blobs || 0;
-
-  // Blob Usage (KiB and percentage of max)
-  const blobUsageKiB = (totalBlobs * 128).toFixed(2);
-  const blobUsagePercent = (
-    (totalBlobs / BPO1_MAX_BLOBS_PER_BLOCK) *
-    100
-  ).toFixed(2);
 
   // Blob Gas percentage (of max)
   const blobGasPercent = ((blobGasUsed / maxGas) * 100).toFixed(2);
@@ -103,14 +95,6 @@ function BlockModal({ block, onClose }) {
                 <div className="detail-label">Blob Gas Price</div>
                 <div className="detail-value">
                   {formatGwei(block.gas_price)}
-                </div>
-              </div>
-
-              <div className="detail-item">
-                <div className="detail-label">Blob Usage</div>
-                <div className="detail-value">
-                  {blobUsageKiB} KiB
-                  <span className="usage-percent"> / {blobUsagePercent}%</span>
                 </div>
               </div>
 
