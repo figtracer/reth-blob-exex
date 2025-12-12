@@ -46,7 +46,7 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                     <th>Chain</th>
                     <th>Blobs</th>
                     <th>Size</th>
-                    <th>Gas Price</th>
+                    <th>Blob Gas Price</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -150,7 +150,7 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                   <th>Txs</th>
                   <th>Blobs</th>
                   <th>Blob Size</th>
-                  <th>Gas Price</th>
+                  <th>Blob Gas Price</th>
                 </tr>
               </thead>
               <tbody>
