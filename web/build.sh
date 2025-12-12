@@ -31,7 +31,8 @@ find "$STATIC_DIR" -mindepth 1 -maxdepth 1 ! -name 'icons' -exec rm -rf {} +
 
 # Build the React app
 echo "🔨 Building React app..."
-npm run build
+cd "$SCRIPT_DIR"
+npx vite build
 
 # Restore icons
 if [ -d "$TEMP_ICONS_DIR/icons" ]; then

@@ -125,11 +125,15 @@ Error generating stack: `+a.message+`
         }
 
         .logo {
-          font-family: 'Space Grotesk', sans-serif;
+          font-family: "Space Grotesk", sans-serif;
           font-size: 1.5rem;
           font-weight: 700;
           letter-spacing: 1px;
-          background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-pink) 100%);
+          background: linear-gradient(
+            135deg,
+            var(--accent-purple) 0%,
+            var(--accent-pink) 100%
+          );
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -755,7 +759,8 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
         }
 
         .mono {
-          font-family: 'JetBrains Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
+          font-family:
+            "JetBrains Mono", "SF Mono", Monaco, "Cascadia Code", monospace;
           font-size: 0.75rem;
         }
 
@@ -996,7 +1001,8 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
         }
 
         .mono {
-          font-family: 'JetBrains Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
+          font-family:
+            "JetBrains Mono", "SF Mono", Monaco, "Cascadia Code", monospace;
         }
 
         .tx-details {
