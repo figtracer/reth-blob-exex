@@ -17,7 +17,17 @@ export function formatBytes(bytes) {
 export function formatGwei(wei) {
   if (!wei) return "0 Gwei";
   const gwei = parseFloat(wei) / 1e9;
-  return gwei.toFixed(4) + " Gwei";
+  if (gwei < 0.001) {
+    return gwei.toFixed(6) + " Gwei";
+  } else if (gwei < 0.01) {
+    return gwei.toFixed(5) + " Gwei";
+  } else if (gwei < 1) {
+    return gwei.toFixed(3) + " Gwei";
+  } else if (gwei < 100) {
+    return gwei.toFixed(2) + " Gwei";
+  } else {
+    return gwei.toFixed(0) + " Gwei";
+  }
 }
 
 // Format timestamp (in seconds) to relative time
