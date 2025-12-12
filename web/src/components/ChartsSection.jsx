@@ -52,41 +52,37 @@ function getChainColor(chainName) {
   return CHAIN_COLORS.other;
 }
 
+const tooltipStyles = {
+  container: {
+    background: "#1a1a2e",
+    border: "1px solid #2a2a4a",
+    borderRadius: "8px",
+    padding: "0.75rem",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+  },
+  label: {
+    fontSize: "0.75rem",
+    color: "#a0a0b0",
+    marginBottom: "0.5rem",
+    margin: 0,
+  },
+  value: {
+    fontSize: "0.875rem",
+    fontWeight: 600,
+    margin: "0.25rem 0",
+  },
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="custom-tooltip">
-        <p className="tooltip-label">{label}</p>
+      <div style={tooltipStyles.container}>
+        <p style={tooltipStyles.label}>{label}</p>
         {payload.map((entry, index) => (
-          <p
-            key={index}
-            className="tooltip-value"
-            style={{ color: entry.color }}
-          >
+          <p key={index} style={{ ...tooltipStyles.value, color: entry.color }}>
             {entry.name}: {entry.value}
           </p>
         ))}
-        <style jsx>{`
-          .custom-tooltip {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-primary);
-            border-radius: 8px;
-            padding: 0.75rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-          }
-
-          .tooltip-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-          }
-
-          .tooltip-value {
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin: 0.25rem 0;
-          }
-        `}</style>
       </div>
     );
   }
@@ -131,11 +127,11 @@ function ChartsSection({ chartData, chainStats }) {
 
   // Process chain stats
   const chainData = chainStats
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.blob_count - a.blob_count)
     .map((stat) => ({
-      chain: stat.chain_name || "Unknown",
-      count: stat.count || 0,
-      color: getChainColor(stat.chain_name),
+      chain: stat.chain || "Unknown",
+      count: stat.blob_count || 0,
+      color: getChainColor(stat.chain),
     }));
 
   return (

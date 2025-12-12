@@ -50,7 +50,7 @@ function StatsGrid({ stats }) {
     },
     {
       title: "Total Blob Size",
-      value: formatBytes(stats.total_blob_size),
+      value: formatBytes(stats.total_blobs * 131072), // BLOB_SIZE_BYTES = 128KB
       icon: Database,
       color: "blue",
     },
@@ -68,7 +68,7 @@ function StatsGrid({ stats }) {
     },
     {
       title: "Blob Gas Price",
-      value: formatGwei(stats.avg_gas_price),
+      value: formatGwei(stats.latest_gas_price),
       icon: Fuel,
       color: "yellow",
     },

@@ -28,11 +28,14 @@ export function formatGwei(wei) {
   }
 }
 
-// Format timestamp to relative time
-export function formatTimeAgo(timestamp) {
+// Format timestamp (in seconds) to relative time
+export function formatTimeAgo(timestampSeconds) {
+  if (!timestampSeconds) return "Unknown";
   const now = Date.now();
-  const diff = Math.floor((now - timestamp) / 1000);
+  const timestampMs = timestampSeconds * 1000;
+  const diff = Math.floor((now - timestampMs) / 1000);
 
+  if (diff < 0) return "Just now";
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;

@@ -52,7 +52,7 @@ function Header({ onSearch, selectedBlocks, onBlocksChange, lastUpdate }) {
       <header className="header">
         <div className="header-content">
           <div className="header-left">
-            <div className="logo">BLOBSGURU</div>
+            <div className="logo">EXBLOB</div>
             <form className="search-form" onSubmit={handleSearch}>
               <input
                 type="text"

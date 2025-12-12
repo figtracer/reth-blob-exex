@@ -44,7 +44,7 @@ function BlockModal({ block, onClose }) {
               <div className="detail-item">
                 <div className="detail-label">Timestamp</div>
                 <div className="detail-value">
-                  {formatTimestamp(block.timestamp)}
+                  {formatTimestamp(block.block_timestamp * 1000)}
                 </div>
               </div>
 
@@ -58,14 +58,14 @@ function BlockModal({ block, onClose }) {
               <div className="detail-item">
                 <div className="detail-label">Total Blobs</div>
                 <div className="detail-value highlight">
-                  {block.blob_count || 0}
+                  {block.total_blobs || 0}
                 </div>
               </div>
 
               <div className="detail-item">
                 <div className="detail-label">Blob Size</div>
                 <div className="detail-value">
-                  {formatBytes(block.blob_size)}
+                  {formatBytes(block.total_blob_size)}
                 </div>
               </div>
 
@@ -89,7 +89,7 @@ function BlockModal({ block, onClose }) {
                         <span className="tx-hash mono">
                           {truncateHash(tx.tx_hash, 10, 8)}
                         </span>
-                        <ChainBadge chainName={tx.chain_name} size="sm" />
+                        <ChainBadge chainName={tx.chain} size="sm" />
                       </div>
                       <div className="tx-details">
                         <span className="tx-detail">
@@ -102,12 +102,6 @@ function BlockModal({ block, onClose }) {
                           <span className="tx-detail-label">Size:</span>
                           <span className="tx-detail-value">
                             {formatBytes(tx.blob_size)}
-                          </span>
-                        </span>
-                        <span className="tx-detail">
-                          <span className="tx-detail-label">Gas:</span>
-                          <span className="tx-detail-value">
-                            {formatGwei(tx.gas_price)}
                           </span>
                         </span>
                       </div>

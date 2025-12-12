@@ -63,7 +63,7 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                         </span>
                       </td>
                       <td>
-                        <ChainBadge chainName={tx.chain_name} size="sm" />
+                        <ChainBadge chainName={tx.chain} size="sm" />
                       </td>
                       <td>
                         <span className="number">{tx.blob_count || 0}</span>
@@ -103,11 +103,11 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                   {senders.slice(0, 10).map((sender, index) => (
                     <tr key={index}>
                       <td>
-                        <ChainBadge chainName={sender.chain_name} size="sm" />
+                        <ChainBadge chainName={sender.chain} size="sm" />
                       </td>
                       <td>
                         <span className="mono highlight">
-                          {truncateAddress(sender.sender)}
+                          {truncateAddress(sender.address)}
                         </span>
                       </td>
                       <td>
@@ -117,12 +117,12 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                       </td>
                       <td>
                         <span className="number">
-                          {formatNumber(sender.blob_count)}
+                          {formatNumber(sender.total_blobs)}
                         </span>
                       </td>
                       <td>
                         <span className="muted">
-                          {formatBytes(sender.total_size)}
+                          {formatBytes(sender.total_blob_size)}
                         </span>
                       </td>
                     </tr>
@@ -162,18 +162,18 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                     </td>
                     <td>
                       <span className="muted">
-                        {formatTimeAgo(block.timestamp)}
+                        {formatTimeAgo(block.block_timestamp)}
                       </span>
                     </td>
                     <td>
                       <span className="number">{block.tx_count || 0}</span>
                     </td>
                     <td>
-                      <span className="number">{block.blob_count || 0}</span>
+                      <span className="number">{block.total_blobs || 0}</span>
                     </td>
                     <td>
                       <span className="muted">
-                        {formatBytes(block.blob_size)}
+                        {formatBytes(block.total_blob_size)}
                       </span>
                     </td>
                     <td>
