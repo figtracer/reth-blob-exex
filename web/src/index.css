@@ -6,11 +6,11 @@
 
 :root {
     /* Dark theme colors inspired by the reference image */
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #12121a;
-    --bg-tertiary: #1a1a24;
-    --bg-card: #16161f;
-    --bg-hover: #1e1e2a;
+    --bg-primary: #050508;
+    --bg-secondary: #0a0a0f;
+    --bg-tertiary: #12121a;
+    --bg-card: #0e0e14;
+    --bg-hover: #16161f;
 
     /* Border colors */
     --border-primary: #252530;

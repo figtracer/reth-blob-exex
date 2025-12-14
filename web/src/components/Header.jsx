@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Clock, AlertCircle, Loader2 } from "lucide-react";
+import { Search, Clock, Info, Loader2 } from "lucide-react";
 
 const BLOCK_OPTIONS = [
   { value: 50, label: "Last 50 blocks" },
@@ -20,8 +20,10 @@ function Header({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [showInfoTooltip, setShowInfoTooltip] = useState(false);
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
+  const infoRef = useRef(null);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -44,11 +46,11 @@ function Header({
         if (stats?.earliest_block && stats?.latest_block) {
           if (blockNumber < stats.earliest_block) {
             setSearchError(
-              `Block #${blockNumber} not found. First available block: ${stats.earliest_block.toLocaleString()}`,
+              `Block #${blockNumber} not found. First available: ${stats.earliest_block.toLocaleString()}`,
             );
           } else if (blockNumber > stats.latest_block) {
             setSearchError(
-              `Block #${blockNumber} not found. Latest block: ${stats.latest_block.toLocaleString()}`,
+              `Block #${blockNumber} not found. Latest: ${stats.latest_block.toLocaleString()}`,
             );
           } else {
             setSearchError(`Block #${blockNumber} not found in database`);
@@ -88,6 +90,9 @@ function Header({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
       }
+      if (infoRef.current && !infoRef.current.contains(event.target)) {
+        setShowInfoTooltip(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -97,53 +102,65 @@ function Header({
     BLOCK_OPTIONS.find((opt) => opt.value === selectedBlocks)?.label ||
     "Last 100 blocks";
 
+  const blockRangeInfo =
+    stats?.earliest_block && stats?.latest_block
+      ? `Available blocks: ${stats.earliest_block.toLocaleString()} - ${stats.latest_block.toLocaleString()}`
+      : "Loading block range...";
+
   return (
     <>
-      <header className="header">
-        <div className="header-content">
-          <div className="header-left">
-            <div className="search-wrapper">
-              <form className="search-form" onSubmit={handleSearch}>
-                <div className="search-input-wrapper">
-                  <Search size={16} className="search-icon" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    className={`search-input ${searchError ? "has-error" : ""}`}
-                    placeholder="Search block number..."
-                    value={searchValue}
-                    onChange={(e) => {
-                      setSearchValue(e.target.value);
-                      setSearchError("");
-                    }}
-                    disabled={isSearching}
-                  />
-                  {isSearching && (
-                    <Loader2 size={16} className="search-loading" />
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  className="search-button"
-                  disabled={isSearching || !searchValue.trim()}
-                >
-                  {isSearching ? (
-                    <Loader2 size={16} className="spin" />
-                  ) : (
-                    "Search"
-                  )}
-                </button>
-              </form>
-              {searchError && (
-                <div className="search-error">
-                  <AlertCircle size={14} />
-                  <span>{searchError}</span>
-                </div>
+      <div className="controls-bar">
+        <div className="controls-content">
+          <div className="search-container">
+            <form className="search-form" onSubmit={handleSearch}>
+              <div className="search-input-wrapper">
+                <Search size={16} className="search-icon" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className={`search-input ${searchError ? "has-error" : ""}`}
+                  placeholder="Search block number..."
+                  value={searchValue}
+                  onChange={(e) => {
+                    setSearchValue(e.target.value);
+                    setSearchError("");
+                  }}
+                  disabled={isSearching}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearch(e);
+                    }
+                  }}
+                />
+                {isSearching && (
+                  <Loader2 size={16} className="search-loading" />
+                )}
+              </div>
+            </form>
+
+            <div className="info-wrapper" ref={infoRef}>
+              <button
+                className="info-button"
+                onClick={() => setShowInfoTooltip(!showInfoTooltip)}
+                onMouseEnter={() => setShowInfoTooltip(true)}
+                onMouseLeave={() => setShowInfoTooltip(false)}
+                aria-label="Block range info"
+              >
+                <Info size={16} />
+              </button>
+              {showInfoTooltip && (
+                <div className="info-tooltip">{blockRangeInfo}</div>
               )}
             </div>
+
+            {searchError && (
+              <div className="search-error">
+                <span>{searchError}</span>
+              </div>
+            )}
           </div>
 
-          <div className="header-right">
+          <div className="controls-right">
             <div className="time-picker" ref={dropdownRef}>
               <button
                 className="time-picker-button"
@@ -196,50 +213,40 @@ function Header({
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <style jsx>{`
-        .header {
+        .controls-bar {
           background: var(--bg-secondary);
           border-bottom: 1px solid var(--border-primary);
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          backdrop-filter: blur(10px);
+          padding: 0.75rem 0;
         }
 
-        .header-content {
+        .controls-content {
           max-width: 1600px;
           margin: 0 auto;
-          padding: 1rem 2rem;
+          padding: 0 2rem;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 2rem;
+          gap: 1.5rem;
         }
 
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 2rem;
-          flex: 1;
-        }
-
-        .search-wrapper {
-          position: relative;
-          max-width: 400px;
-          width: 100%;
-        }
-
-        .search-form {
+        .search-container {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+          position: relative;
+          flex: 1;
+          max-width: 400px;
+        }
+
+        .search-form {
+          flex: 1;
         }
 
         .search-input-wrapper {
           position: relative;
-          flex: 1;
           display: flex;
           align-items: center;
         }
@@ -260,7 +267,7 @@ function Header({
 
         .search-input {
           width: 100%;
-          padding: 0.625rem 2.5rem 0.625rem 2.5rem;
+          padding: 0.5rem 2.5rem 0.5rem 2.5rem;
           background: var(--bg-tertiary);
           border: 1px solid var(--border-primary);
           border-radius: 8px;
@@ -295,49 +302,56 @@ function Header({
           background: rgba(239, 68, 68, 0.05);
         }
 
-        .search-button {
+        .info-wrapper {
+          position: relative;
+        }
+
+        .info-button {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 0.625rem 1rem;
-          background: linear-gradient(
-            135deg,
-            var(--accent-purple) 0%,
-            #9333ea 100%
-          );
-          border: none;
-          border-radius: 8px;
-          color: white;
-          font-size: 0.875rem;
-          font-weight: 500;
+          width: 32px;
+          height: 32px;
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border-primary);
+          border-radius: 6px;
+          color: var(--text-tertiary);
           cursor: pointer;
           transition: all 0.2s;
+        }
+
+        .info-button:hover {
+          border-color: var(--border-secondary);
+          color: var(--text-secondary);
+          background: var(--bg-card);
+        }
+
+        .info-tooltip {
+          position: absolute;
+          top: calc(100% + 0.5rem);
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 0.5rem 0.75rem;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border-primary);
+          border-radius: 6px;
+          color: var(--text-secondary);
+          font-size: 0.75rem;
           white-space: nowrap;
-          min-width: 80px;
+          z-index: 100;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          animation: fadeIn 0.15s ease-out;
         }
 
-        .search-button:hover:not(:disabled) {
-          background: linear-gradient(
-            135deg,
-            var(--accent-purple-hover) 0%,
-            #a855f7 100%
-          );
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(147, 51, 234, 0.3);
-        }
-
-        .search-button:active:not(:disabled) {
-          transform: translateY(0);
-        }
-
-        .search-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          transform: none;
-        }
-
-        .spin {
-          animation: spin 1s linear infinite;
+        .info-tooltip::before {
+          content: "";
+          position: absolute;
+          top: -5px;
+          left: 50%;
+          transform: translateX(-50%);
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-bottom: 5px solid var(--border-primary);
         }
 
         .search-error {
@@ -353,8 +367,9 @@ function Header({
           border: 1px solid rgba(239, 68, 68, 0.3);
           border-radius: 6px;
           color: var(--error);
-          font-size: 0.8125rem;
+          font-size: 0.75rem;
           animation: fadeIn 0.2s ease-out;
+          z-index: 50;
         }
 
         @keyframes fadeIn {
@@ -368,6 +383,21 @@ function Header({
           }
         }
 
+        .info-tooltip {
+          animation: fadeInTooltip 0.15s ease-out;
+        }
+
+        @keyframes fadeInTooltip {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+
         @keyframes spin {
           from {
             transform: rotate(0deg);
@@ -377,10 +407,10 @@ function Header({
           }
         }
 
-        .header-right {
+        .controls-right {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
+          gap: 1rem;
         }
 
         .time-picker {
@@ -503,37 +533,20 @@ function Header({
           color: var(--text-secondary);
         }
 
-        @media (max-width: 1024px) {
-          .header-content {
-            padding: 1rem;
-            gap: 1rem;
-          }
-
-          .search-wrapper {
-            max-width: 280px;
-          }
-        }
-
         @media (max-width: 768px) {
-          .header-content {
+          .controls-content {
+            padding: 0 1rem;
             flex-direction: column;
             align-items: stretch;
-            gap: 1rem;
+            gap: 0.75rem;
           }
 
-          .header-left {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 1rem;
-          }
-
-          .header-right {
-            width: 100%;
-            justify-content: space-between;
-          }
-
-          .search-wrapper {
+          .search-container {
             max-width: 100%;
+          }
+
+          .controls-right {
+            justify-content: space-between;
           }
         }
       `}</style>

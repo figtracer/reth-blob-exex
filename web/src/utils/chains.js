@@ -28,6 +28,7 @@ export const CHAIN_COLORS = {
   mint: "#4ade80",
   zircuit: "#FFEE55",
   polynomial: "#6366f1",
+  xlayer: "#000000",
   other: "#585b70",
 };
 
@@ -36,6 +37,7 @@ export const CHAINS_WITH_ICONS = [
   "abstract",
   "arbitrum",
   "base",
+  "codex",
   "ink",
   "katana",
   "lighter",
@@ -49,6 +51,7 @@ export const CHAINS_WITH_ICONS = [
   "starknet",
   "unichain",
   "world",
+  "xlayer",
   "zircuit",
   "zora",
 ];

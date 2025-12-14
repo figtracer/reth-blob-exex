@@ -3,6 +3,7 @@ import Header from "./components/Header";
 import StatsGrid from "./components/StatsGrid";
 import TablesSection from "./components/TablesSection";
 import BlockModal from "./components/BlockModal";
+import Footer from "./components/Footer";
 
 // Lazy load charts to improve initial load time
 const ChartsSection = lazy(() => import("./components/ChartsSection"));
@@ -110,6 +111,8 @@ function App() {
         )}
       </main>
 
+      <Footer />
+
       {selectedBlock && (
         <BlockModal block={selectedBlock} onClose={handleCloseModal} />
       )}
@@ -146,6 +149,15 @@ function App() {
           border-top-color: var(--accent-purple);
           border-radius: 50%;
           animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
 
         @media (max-width: 768px) {
