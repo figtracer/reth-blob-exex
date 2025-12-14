@@ -161,6 +161,11 @@ function Header({
           </div>
 
           <div className="controls-right">
+            <img
+              src="/icons/favicon.png?v=2"
+              alt="EXBLOB"
+              className="header-favicon"
+            />
             <div className="time-picker" ref={dropdownRef}>
               <button
                 className="time-picker-button"
@@ -409,6 +414,17 @@ function Header({
           display: flex;
           align-items: center;
           gap: 1rem;
+        }
+
+        .header-favicon {
+          width: 24px;
+          height: 24px;
+          opacity: 0.8;
+          transition: opacity 0.2s;
+        }
+
+        .header-favicon:hover {
+          opacity: 1;
         }
 
         .time-picker {
