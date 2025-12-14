@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from "react";
 import {
   formatNumber,
   formatBytes,
@@ -9,6 +10,24 @@ import {
 import ChainBadge from "./ChainBadge";
 
 function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
+  // Memoize sliced data to prevent re-computation
+  const displayedTransactions = useMemo(
+    () => blobTransactions?.slice(0, 10) || [],
+    [blobTransactions],
+  );
+
+  const displayedSenders = useMemo(
+    () => senders?.slice(0, 10) || [],
+    [senders],
+  );
+
+  const displayedBlocks = useMemo(() => blocks?.slice(0, 20) || [], [blocks]);
+
+  const handleBlockClick = useCallback(
+    (block) => onBlockClick(block),
+    [onBlockClick],
+  );
+
   if (!blocks || !senders || !blobTransactions) {
     return (
       <div className="tables-section">
@@ -50,8 +69,8 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {blobTransactions.slice(0, 10).map((tx, index) => (
-                    <tr key={index}>
+                  {displayedTransactions.map((tx, index) => (
+                    <tr key={tx.tx_hash || index}>
                       <td>
                         <a
                           href={`https://etherscan.io/tx/${tx.tx_hash}`}
@@ -105,8 +124,8 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {senders.slice(0, 10).map((sender, index) => (
-                    <tr key={index}>
+                  {displayedSenders.map((sender, index) => (
+                    <tr key={sender.address || index}>
                       <td>
                         <ChainBadge chainName={sender.chain} size="sm" />
                       </td>
@@ -154,11 +173,11 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                 </tr>
               </thead>
               <tbody>
-                {blocks.slice(0, 20).map((block, index) => (
+                {displayedBlocks.map((block) => (
                   <tr
-                    key={index}
+                    key={block.block_number}
                     className="clickable"
-                    onClick={() => onBlockClick(block)}
+                    onClick={() => handleBlockClick(block)}
                   >
                     <td>
                       <a

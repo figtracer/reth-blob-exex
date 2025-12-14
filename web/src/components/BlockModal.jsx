@@ -358,7 +358,6 @@ function BlockModal({ block, onClose }) {
         .tx-hash {
           font-size: 0.875rem;
           color: var(--accent-cyan);
-          flex-shrink: 0;
         }
 
         .mono {
@@ -401,12 +400,16 @@ function BlockModal({ block, onClose }) {
         .tx-hash-link {
           text-decoration: none;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: color 0.2s;
+          border: none;
+          outline: none;
+          background: none;
+          display: inline;
         }
 
         .tx-hash-link:hover {
-          text-decoration: underline;
-          text-decoration-color: var(--accent-cyan);
+          color: var(--accent-cyan);
+          opacity: 0.8;
         }
 
         @media (max-width: 768px) {

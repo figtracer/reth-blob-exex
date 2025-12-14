@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from "react";
 import {
   BarChart,
   Bar,
@@ -10,48 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { getChainIcon } from "../utils/chains";
-
-const CHAIN_COLORS = {
-  base: "#0052ff",
-  optimism: "#f38ba8",
-  arbitrum: "#28a0f0",
-  scroll: "#fab387",
-  starknet: "#cba6f7",
-  zksync: "#b4befe",
-  linea: "#61dfff",
-  taiko: "#e81899",
-  blast: "#fcfc03",
-  zora: "#5b5bd6",
-  mode: "#dffe00",
-  soneium: "#00d4ff",
-  lighter: "#ffd700",
-  unichain: "#ff007a",
-  katana: "#ff6b35",
-  codex: "#9d4edd",
-  metal: "#8b8b8b",
-  abstract: "#a855f7",
-  world: "#10b981",
-  ink: "#3b82f6",
-  mantle: "#1a1a2e",
-  cyber: "#00ff88",
-  kroma: "#7c3aed",
-  redstone: "#dc2626",
-  fraxtal: "#818cf8",
-  mint: "#4ade80",
-  other: "#585b70",
-};
-
-function getChainColor(chainName) {
-  if (!chainName) return CHAIN_COLORS.other;
-  const normalized = chainName.toLowerCase().replace(/\s+/g, "");
-  for (const [key, color] of Object.entries(CHAIN_COLORS)) {
-    if (normalized.includes(key)) {
-      return color;
-    }
-  }
-  return CHAIN_COLORS.other;
-}
+import { getChainIcon, getChainColor } from "../utils/chains";
 
 const tooltipStyles = {
   container: {
@@ -121,16 +81,16 @@ const ChainTick = ({ x, y, payload }) => {
   return (
     <g transform={`translate(${x},${y})`}>
       {chainIcon ? (
-        <image
-          x={-10}
-          y={-7}
-          width={14}
-          height={14}
-          xlinkHref={chainIcon}
-          style={{ borderRadius: "50%" }}
-        />
+        <image x={-20} y={-8} width={16} height={16} href={chainIcon} />
       ) : (
-        <text x={-5} y={0} dy={4} textAnchor="end" fill="#71717a" fontSize={10}>
+        <text
+          x={-5}
+          y={5}
+          textAnchor="end"
+          fill="#71717a"
+          fontSize={9}
+          fontFamily="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+        >
           Other
         </text>
       )}
@@ -138,7 +98,56 @@ const ChainTick = ({ x, y, payload }) => {
   );
 };
 
+const formatGwei = (value) => value.toFixed(6);
+
 function ChartsSection({ chartData, chainStats, onBlockClick }) {
+  // Memoize processed chart data
+  const blobsData = useMemo(() => {
+    if (!chartData?.labels) return [];
+    return chartData.labels.map((label, index) => ({
+      block: label,
+      blobs: chartData.blobs?.[index] || 0,
+    }));
+  }, [chartData?.labels, chartData?.blobs]);
+
+  const gasData = useMemo(() => {
+    if (!chartData?.labels) return [];
+    return chartData.labels.map((label, index) => ({
+      block: label,
+      price: chartData.gas_prices?.[index] || 0,
+    }));
+  }, [chartData?.labels, chartData?.gas_prices]);
+
+  const chainData = useMemo(() => {
+    if (!chainStats) return [];
+    return chainStats
+      .filter((stat) => stat.blob_count > 0)
+      .sort((a, b) => b.blob_count - a.blob_count)
+      .slice(0, 10)
+      .map((stat) => ({
+        chain: stat.chain || "Unknown",
+        count: stat.blob_count || 0,
+        color: getChainColor(stat.chain),
+      }));
+  }, [chainStats]);
+
+  // Memoize click handler
+  const handleChartClick = useCallback(
+    (data) => {
+      if (data && data.activePayload && data.activePayload[0]) {
+        const blockNumber = data.activePayload[0].payload.block;
+        if (onBlockClick) {
+          fetch(`/api/block?block_number=${blockNumber}`)
+            .then((res) => res.json())
+            .then((block) => {
+              if (block) onBlockClick(block);
+            });
+        }
+      }
+    },
+    [onBlockClick],
+  );
+
   if (!chartData || !chainStats) {
     return (
       <div className="charts-section">
@@ -160,35 +169,6 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
     );
   }
 
-  // Process chart data for blobs per block
-  const blobsData =
-    chartData.labels?.map((label, index) => ({
-      block: label,
-      blobs: chartData.blobs?.[index] || 0,
-    })) || [];
-
-  // Process chart data for gas prices - backend already returns in Gwei, no need to divide again
-  const gasData =
-    chartData.labels?.map((label, index) => ({
-      block: label,
-      price: chartData.gas_prices?.[index] || 0,
-    })) || [];
-
-  // Process chain stats
-  const chainData = chainStats
-    .filter((stat) => stat.blob_count > 0)
-    .sort((a, b) => b.blob_count - a.blob_count)
-    .slice(0, 10)
-    .map((stat) => ({
-      chain: stat.chain || "Unknown",
-      count: stat.blob_count || 0,
-      color: getChainColor(stat.chain),
-    }));
-
-  const formatGwei = (value) => {
-    return value.toFixed(6);
-  };
-
   return (
     <>
       <div className="charts-section">
@@ -203,18 +183,7 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
                 <BarChart
                   data={blobsData}
                   margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-                  onClick={(data) => {
-                    if (data && data.activePayload && data.activePayload[0]) {
-                      const blockNumber = data.activePayload[0].payload.block;
-                      if (onBlockClick) {
-                        fetch(`/api/block?block_number=${blockNumber}`)
-                          .then((res) => res.json())
-                          .then((block) => {
-                            if (block) onBlockClick(block);
-                          });
-                      }
-                    }
-                  }}
+                  onClick={handleChartClick}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -241,7 +210,7 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
                     }}
                   />
                   <Bar dataKey="blobs" radius={[2, 2, 0, 0]} maxBarSize={8}>
-                    {blobsData.map((entry, index) => (
+                    {blobsData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill="#a78bfa"
@@ -264,18 +233,7 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
                 <LineChart
                   data={gasData}
                   margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                  onClick={(data) => {
-                    if (data && data.activePayload && data.activePayload[0]) {
-                      const blockNumber = data.activePayload[0].payload.block;
-                      if (onBlockClick) {
-                        fetch(`/api/block?block_number=${blockNumber}`)
-                          .then((res) => res.json())
-                          .then((block) => {
-                            if (block) onBlockClick(block);
-                          });
-                      }
-                    }
-                  }}
+                  onClick={handleChartClick}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -397,10 +355,6 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
           border-color: var(--border-secondary);
         }
 
-        .chart-body {
-          cursor: pointer;
-        }
-
         .chart-header {
           padding: 1rem 1.25rem;
           border-bottom: 1px solid var(--border-primary);
@@ -418,6 +372,7 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
 
         .chart-body {
           padding: 1rem;
+          cursor: pointer;
         }
 
         .skeleton {

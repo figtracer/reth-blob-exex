@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StatsGrid from "./components/StatsGrid";
 import TablesSection from "./components/TablesSection";
@@ -19,8 +19,8 @@ function App() {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch all data
-  const fetchData = async () => {
+  // Fetch all data - memoized to prevent recreation
+  const fetchData = useCallback(async () => {
     try {
       const [statsRes, blocksRes, sendersRes, chartRes, chainRes, txsRes] =
         await Promise.all([
@@ -45,17 +45,17 @@ function App() {
       console.error("Error fetching data:", error);
       setIsLoading(false);
     }
-  };
-
-  // Initial fetch and polling
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 1000);
-    return () => clearInterval(interval);
   }, [selectedBlocks]);
 
-  // Search for a block
-  const handleBlockSearch = async (blockNumber) => {
+  // Initial fetch and polling (3 second interval for better performance)
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 3000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // Search for a block - memoized
+  const handleBlockSearch = useCallback(async (blockNumber) => {
     try {
       const res = await fetch(`/api/block?block_number=${blockNumber}`);
       if (res.ok) {
@@ -69,7 +69,10 @@ function App() {
       console.error("Error searching block:", error);
       throw error;
     }
-  };
+  }, []);
+
+  // Memoized close handler
+  const handleCloseModal = useCallback(() => setSelectedBlock(null), []);
 
   return (
     <div className="app">
@@ -108,10 +111,7 @@ function App() {
       </main>
 
       {selectedBlock && (
-        <BlockModal
-          block={selectedBlock}
-          onClose={() => setSelectedBlock(null)}
-        />
+        <BlockModal block={selectedBlock} onClose={handleCloseModal} />
       )}
 
       <style jsx>{`
