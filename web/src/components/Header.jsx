@@ -162,7 +162,7 @@ function Header({
 
           <div className="controls-right">
             <img
-              src="/icons/favicon.png?v=2"
+              src="/icons/favicon.png?v=3"
               alt="EXBLOB"
               className="header-favicon"
             />
