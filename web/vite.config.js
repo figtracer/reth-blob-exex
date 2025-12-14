@@ -9,7 +9,11 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          charts: ["recharts"],
+          icons: ["lucide-react"],
+        },
       },
     },
   },

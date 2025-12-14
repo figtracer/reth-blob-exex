@@ -396,6 +396,15 @@ function Header({
           border: 1px solid var(--border-primary);
           border-radius: 6px;
           color: var(--text-primary);
+          font-family:
+            "Inter",
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            Roboto,
+            Oxygen,
+            Ubuntu,
+            sans-serif;
           font-size: 0.875rem;
           cursor: pointer;
           transition: all 0.2s;
@@ -441,6 +450,15 @@ function Header({
           border: none;
           text-align: left;
           color: var(--text-secondary);
+          font-family:
+            "Inter",
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            Roboto,
+            Oxygen,
+            Ubuntu,
+            sans-serif;
           font-size: 0.875rem;
           cursor: pointer;
           transition: all 0.15s;

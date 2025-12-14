@@ -1,5 +1,3 @@
-import { TrendingUp, Database, BarChart3, Box, Fuel } from "lucide-react";
-
 function StatsGrid({ stats }) {
   if (!stats) {
     return (
@@ -37,31 +35,26 @@ function StatsGrid({ stats }) {
     {
       title: "Total Blobs",
       value: formatNumber(stats.total_blobs),
-      icon: Box,
       color: "cyan",
     },
     {
       title: "Total Blob Size",
       value: formatBytes(stats.total_blobs * 131072), // BLOB_SIZE_BYTES = 128KB
-      icon: Database,
       color: "blue",
     },
     {
       title: "Avg Blobs/Block",
       value: stats.avg_blobs_per_block?.toFixed(2) || "0",
-      icon: BarChart3,
       color: "purple",
     },
     {
       title: "Latest Block",
       value: formatNumber(stats.latest_block),
-      icon: TrendingUp,
       color: "green",
     },
     {
       title: "Blob Gas Price",
       value: formatGwei(stats.latest_gas_price),
-      icon: Fuel,
       color: "yellow",
     },
   ];
@@ -69,22 +62,14 @@ function StatsGrid({ stats }) {
   return (
     <>
       <div className="stats-grid">
-        {statCards.map((card, index) => {
-          const Icon = card.icon;
-          return (
-            <div key={index} className="stat-card fade-in">
-              <div className="stat-header">
-                <h3 className="stat-title">{card.title}</h3>
-                <div className={`stat-icon stat-icon-${card.color}`}>
-                  <Icon size={18} />
-                </div>
-              </div>
-              <div className={`stat-value stat-value-${card.color}`}>
-                {card.value}
-              </div>
+        {statCards.map((card, index) => (
+          <div key={index} className="stat-card fade-in">
+            <h3 className="stat-title">{card.title}</h3>
+            <div className={`stat-value stat-value-${card.color}`}>
+              {card.value}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       <style jsx>{`
@@ -109,54 +94,13 @@ function StatsGrid({ stats }) {
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
         }
 
-        .stat-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 0.75rem;
-        }
-
         .stat-title {
           font-size: 0.75rem;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
           color: var(--text-secondary);
-        }
-
-        .stat-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          opacity: 0.8;
-        }
-
-        .stat-icon-cyan {
-          background: rgba(34, 211, 238, 0.1);
-          color: var(--accent-cyan);
-        }
-
-        .stat-icon-blue {
-          background: rgba(96, 165, 250, 0.1);
-          color: var(--accent-blue);
-        }
-
-        .stat-icon-purple {
-          background: rgba(167, 139, 250, 0.1);
-          color: var(--accent-purple);
-        }
-
-        .stat-icon-green {
-          background: rgba(52, 211, 153, 0.1);
-          color: var(--accent-green);
-        }
-
-        .stat-icon-yellow {
-          background: rgba(251, 191, 36, 0.1);
-          color: var(--accent-yellow);
+          margin-bottom: 0.75rem;
         }
 
         .stat-value {
@@ -217,11 +161,6 @@ function StatsGrid({ stats }) {
 
           .stat-value {
             font-size: 1.5rem;
-          }
-
-          .stat-icon {
-            width: 28px;
-            height: 28px;
           }
         }
       `}</style>

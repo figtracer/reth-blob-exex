@@ -120,15 +120,7 @@ function BlockModal({ block, onClose }) {
               </div>
 
               <div className="detail-item">
-                <div className="detail-label">
-                  Excess Blob Gas
-                  <span
-                    className="detail-info-icon"
-                    title="Running total of blob gas consumed in excess of the target, prior to the block. Blocks with above-target blob gas consumption increase this value, blocks with below-target blob gas consumption decrease it (bounded at 0)."
-                  >
-                    ⓘ
-                  </span>
-                </div>
+                <div className="detail-label">Excess Blob Gas</div>
                 <div className="detail-value">
                   {formatNumber(excessBlobGas)}
                 </div>
@@ -366,9 +358,7 @@ function BlockModal({ block, onClose }) {
         .tx-hash {
           font-size: 0.875rem;
           color: var(--accent-cyan);
-          flex: 1;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          flex-shrink: 0;
         }
 
         .mono {
@@ -412,11 +402,11 @@ function BlockModal({ block, onClose }) {
           text-decoration: none;
           cursor: pointer;
           transition: all 0.2s;
-          border-bottom: 1px solid transparent;
         }
 
         .tx-hash-link:hover {
-          border-bottom-color: var(--accent-cyan);
+          text-decoration: underline;
+          text-decoration-color: var(--accent-cyan);
         }
 
         @media (max-width: 768px) {

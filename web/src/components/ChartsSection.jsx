@@ -114,7 +114,7 @@ const ChainTooltip = ({ active, payload }) => {
   return null;
 };
 
-// Custom Y-axis tick with chain logo only
+// Custom Y-axis tick with chain logo or "Other" text
 const ChainTick = ({ x, y, payload }) => {
   const chainIcon = getChainIcon(payload.value);
 
@@ -130,8 +130,8 @@ const ChainTick = ({ x, y, payload }) => {
           style={{ borderRadius: "50%" }}
         />
       ) : (
-        <text x={-5} y={0} dy={4} textAnchor="end" fill="#a1a1aa" fontSize={12}>
-          {payload.value}
+        <text x={-5} y={0} dy={4} textAnchor="end" fill="#71717a" fontSize={10}>
+          Other
         </text>
       )}
     </g>

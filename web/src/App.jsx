@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Header from "./components/Header";
 import StatsGrid from "./components/StatsGrid";
-import ChartsSection from "./components/ChartsSection";
 import TablesSection from "./components/TablesSection";
 import BlockModal from "./components/BlockModal";
+
+// Lazy load charts to improve initial load time
+const ChartsSection = lazy(() => import("./components/ChartsSection"));
 
 function App() {
   const [stats, setStats] = useState(null);
@@ -88,11 +90,13 @@ function App() {
         ) : (
           <>
             <StatsGrid stats={stats} />
-            <ChartsSection
-              chartData={chartData}
-              chainStats={chainStats}
-              onBlockClick={setSelectedBlock}
-            />
+            <Suspense fallback={<ChartsSkeleton />}>
+              <ChartsSection
+                chartData={chartData}
+                chainStats={chainStats}
+                onBlockClick={setSelectedBlock}
+              />
+            </Suspense>
             <TablesSection
               blocks={blocks}
               senders={senders}
@@ -147,6 +151,75 @@ function App() {
         @media (max-width: 768px) {
           .main-content {
             padding: 1rem;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Skeleton component for charts loading state
+function ChartsSkeleton() {
+  return (
+    <div className="charts-skeleton">
+      <div className="charts-grid">
+        <div className="chart-card skeleton">
+          <div className="skeleton-title"></div>
+          <div className="skeleton-chart"></div>
+        </div>
+        <div className="chart-card skeleton">
+          <div className="skeleton-title"></div>
+          <div className="skeleton-chart"></div>
+        </div>
+      </div>
+      <div className="chart-card skeleton" style={{ marginTop: "1rem" }}>
+        <div className="skeleton-title"></div>
+        <div className="skeleton-chart"></div>
+      </div>
+      <style jsx>{`
+        .charts-skeleton {
+          margin-bottom: 2rem;
+        }
+        .charts-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+        .chart-card {
+          background: var(--bg-card);
+          border: 1px solid var(--border-primary);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        .skeleton {
+          animation: pulse 2s infinite;
+        }
+        .skeleton-title {
+          height: 16px;
+          background: var(--border-primary);
+          border-radius: 4px;
+          width: 150px;
+          margin: 1rem 1.25rem;
+        }
+        .skeleton-chart {
+          height: 220px;
+          background: var(--border-primary);
+          margin: 1rem;
+          border-radius: 8px;
+        }
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+        @media (max-width: 1024px) {
+          .charts-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
