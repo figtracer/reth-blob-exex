@@ -417,14 +417,6 @@ function HeatmapCell({ cell, day, hour }) {
           min-width: 8px;
           height: 20px;
           border-radius: 2px;
-          transition: all 0.2s;
-          cursor: help;
-        }
-
-        .heatmap-cell:hover {
-          opacity: 0;
-          transform: scale(1.2);
-          z-index: 10;
         }
       `}</style>
     </div>

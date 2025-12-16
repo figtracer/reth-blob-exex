@@ -382,12 +382,6 @@ function HourlyActivityBar({ activity, chainColor }) {
 
         .hour-cell {
           flex: 1;
-          transition: opacity 0.2s;
-          cursor: help;
-        }
-
-        .hour-cell:hover {
-          opacity: 1 !important;
         }
 
         .hour-labels {
