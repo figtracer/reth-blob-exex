@@ -4,6 +4,9 @@ import StatsGrid from "./components/StatsGrid";
 import TablesSection from "./components/TablesSection";
 import BlockModal from "./components/BlockModal";
 import Footer from "./components/Footer";
+import RollingComparison from "./components/RollingComparison";
+import ChainProfiles from "./components/ChainProfiles";
+import CongestionHeatmap from "./components/CongestionHeatmap";
 
 // Lazy load charts to improve initial load time
 const ChartsSection = lazy(() => import("./components/ChartsSection"));
@@ -13,32 +16,48 @@ function App() {
   const [blocks, setBlocks] = useState([]);
   const [senders, setSenders] = useState([]);
   const [chartData, setChartData] = useState(null);
-  const [chainStats, setChainStats] = useState([]);
   const [blobTransactions, setBlobTransactions] = useState([]);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [selectedBlocks, setSelectedBlocks] = useState(100);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // New state for derived metrics
+  const [rollingComparison, setRollingComparison] = useState(null);
+  const [chainProfiles, setChainProfiles] = useState([]);
+  const [congestionHeatmap, setCongestionHeatmap] = useState(null);
+
   // Fetch all data - memoized to prevent recreation
   const fetchData = useCallback(async () => {
     try {
-      const [statsRes, blocksRes, sendersRes, chartRes, chainRes, txsRes] =
-        await Promise.all([
-          fetch("/api/stats"),
-          fetch("/api/blocks"),
-          fetch("/api/senders"),
-          fetch(`/api/chart?blocks=${selectedBlocks}`),
-          fetch("/api/chain-stats"),
-          fetch("/api/blob-transactions"),
-        ]);
+      const [
+        statsRes,
+        blocksRes,
+        sendersRes,
+        chartRes,
+        txsRes,
+        rollingRes,
+        profilesRes,
+        heatmapRes,
+      ] = await Promise.all([
+        fetch("/api/stats"),
+        fetch("/api/blocks"),
+        fetch("/api/senders"),
+        fetch(`/api/chart?blocks=${selectedBlocks}`),
+        fetch("/api/blob-transactions"),
+        fetch("/api/rolling-comparison"),
+        fetch("/api/chain-profiles"),
+        fetch("/api/congestion-heatmap"),
+      ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
       if (blocksRes.ok) setBlocks(await blocksRes.json());
       if (sendersRes.ok) setSenders(await sendersRes.json());
       if (chartRes.ok) setChartData(await chartRes.json());
-      if (chainRes.ok) setChainStats(await chainRes.json());
       if (txsRes.ok) setBlobTransactions(await txsRes.json());
+      if (rollingRes.ok) setRollingComparison(await rollingRes.json());
+      if (profilesRes.ok) setChainProfiles(await profilesRes.json());
+      if (heatmapRes.ok) setCongestionHeatmap(await heatmapRes.json());
 
       setLastUpdate(new Date());
       setIsLoading(false);
@@ -93,14 +112,22 @@ function App() {
           </div>
         ) : (
           <>
-            <StatsGrid stats={stats} />
+            <StatsGrid stats={stats} rollingData={rollingComparison} />
+
+            <RollingComparison data={rollingComparison} />
+
             <Suspense fallback={<ChartsSkeleton />}>
               <ChartsSection
                 chartData={chartData}
-                chainStats={chainStats}
+                chainProfiles={chainProfiles}
                 onBlockClick={setSelectedBlock}
               />
             </Suspense>
+
+            <CongestionHeatmap data={congestionHeatmap} />
+
+            <ChainProfiles data={chainProfiles} />
+
             <TablesSection
               blocks={blocks}
               senders={senders}

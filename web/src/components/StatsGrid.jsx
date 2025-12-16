@@ -1,8 +1,16 @@
-function StatsGrid({ stats }) {
+import {
+  BLOB_TARGET,
+  BLOB_MAX,
+  BLOB_SIZE_BYTES,
+  getRegimeInfo,
+  classifyRegime,
+} from "../utils/protocol";
+
+function StatsGrid({ stats, rollingData }) {
   if (!stats) {
     return (
       <div className="stats-grid">
-        {[...Array(5)].map((_, i) => (
+        {[...Array(7)].map((_, i) => (
           <div key={i} className="stat-card skeleton">
             <div className="skeleton-line"></div>
             <div className="skeleton-value"></div>
@@ -28,8 +36,18 @@ function StatsGrid({ stats }) {
   const formatGwei = (wei) => {
     if (!wei) return "0 Gwei";
     const gwei = parseFloat(wei) / 1e9;
-    return gwei.toFixed(6) + " Gwei";
+    if (gwei < 0.001) return gwei.toFixed(6) + " Gwei";
+    if (gwei < 1) return gwei.toFixed(4) + " Gwei";
+    return gwei.toFixed(2) + " Gwei";
   };
+
+  // Calculate utilization and saturation from rolling data or avg
+  const avgBlobs =
+    rollingData?.hour_1?.avg_blobs_per_block ?? stats.avg_blobs_per_block ?? 0;
+  const targetUtilization = (avgBlobs / BLOB_TARGET) * 100;
+  const saturationIndex = (avgBlobs / BLOB_MAX) * 100;
+  const regime = classifyRegime(avgBlobs);
+  const regimeInfo = getRegimeInfo(regime);
 
   const statCards = [
     {
@@ -39,18 +57,39 @@ function StatsGrid({ stats }) {
     },
     {
       title: "Total Blob Size",
-      value: formatBytes(stats.total_blobs * 131072), // BLOB_SIZE_BYTES = 128KB
+      value: formatBytes(stats.total_blobs * BLOB_SIZE_BYTES),
       color: "blue",
     },
     {
       title: "Avg Blobs/Block",
       value: stats.avg_blobs_per_block?.toFixed(2) || "0",
+      subtitle: `Target: ${BLOB_TARGET} | Max: ${BLOB_MAX}`,
       color: "purple",
     },
     {
-      title: "Latest Block",
-      value: formatNumber(stats.latest_block),
-      color: "green",
+      title: "Target Utilization",
+      value: `${targetUtilization.toFixed(1)}%`,
+      subtitle: `${avgBlobs.toFixed(1)} / ${BLOB_TARGET} blobs`,
+      color: getUtilizationColorName(targetUtilization),
+      hasBar: true,
+      barValue: targetUtilization,
+      barMax: 200,
+      barMarker: 100, // 100% marker
+    },
+    {
+      title: "Saturation Index",
+      value: `${saturationIndex.toFixed(1)}%`,
+      subtitle: `${avgBlobs.toFixed(1)} / ${BLOB_MAX} blobs`,
+      color: getSaturationColorName(saturationIndex),
+      hasBar: true,
+      barValue: saturationIndex,
+      barMax: 100,
+    },
+    {
+      title: "Current Regime",
+      value: regimeInfo.label,
+      subtitle: regimeInfo.description,
+      customColor: regimeInfo.color,
     },
     {
       title: "Blob Gas Price",
@@ -65,9 +104,38 @@ function StatsGrid({ stats }) {
         {statCards.map((card, index) => (
           <div key={index} className="stat-card fade-in">
             <h3 className="stat-title">{card.title}</h3>
-            <div className={`stat-value stat-value-${card.color}`}>
+            <div
+              className={`stat-value ${card.customColor ? "" : `stat-value-${card.color}`}`}
+              style={card.customColor ? { color: card.customColor } : {}}
+            >
               {card.value}
             </div>
+            {card.subtitle && (
+              <div className="stat-subtitle">{card.subtitle}</div>
+            )}
+            {card.hasBar && (
+              <div className="stat-bar-container">
+                <div className="stat-bar">
+                  <div
+                    className="stat-bar-fill"
+                    style={{
+                      width: `${Math.min((card.barValue / card.barMax) * 100, 100)}%`,
+                      backgroundColor:
+                        card.customColor || `var(--accent-${card.color})`,
+                    }}
+                  />
+                  {card.barMarker && (
+                    <div
+                      className="stat-bar-marker"
+                      style={{
+                        left: `${(card.barMarker / card.barMax) * 100}%`,
+                      }}
+                      title="Target (100%)"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -75,7 +143,7 @@ function StatsGrid({ stats }) {
       <style jsx>{`
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 1rem;
           margin-bottom: 2rem;
         }
@@ -100,14 +168,48 @@ function StatsGrid({ stats }) {
           text-transform: uppercase;
           letter-spacing: 0.05em;
           color: var(--text-secondary);
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.5rem;
         }
 
         .stat-value {
-          font-size: 1.75rem;
+          font-size: 1.5rem;
           font-weight: 700;
           font-variant-numeric: tabular-nums;
-          line-height: 1;
+          line-height: 1.2;
+        }
+
+        .stat-subtitle {
+          font-size: 0.625rem;
+          color: var(--text-secondary);
+          margin-top: 0.25rem;
+        }
+
+        .stat-bar-container {
+          margin-top: 0.5rem;
+        }
+
+        .stat-bar {
+          height: 6px;
+          background: var(--border-primary);
+          border-radius: 3px;
+          position: relative;
+          overflow: visible;
+        }
+
+        .stat-bar-fill {
+          height: 100%;
+          border-radius: 3px;
+          transition: width 0.3s ease;
+        }
+
+        .stat-bar-marker {
+          position: absolute;
+          top: -3px;
+          bottom: -3px;
+          width: 2px;
+          background: var(--text-secondary);
+          opacity: 0.6;
+          transform: translateX(-50%);
         }
 
         .stat-value-cyan {
@@ -130,6 +232,18 @@ function StatsGrid({ stats }) {
           color: var(--accent-yellow);
         }
 
+        .stat-value-amber {
+          color: #f59e0b;
+        }
+
+        .stat-value-orange {
+          color: #f97316;
+        }
+
+        .stat-value-red {
+          color: #ef4444;
+        }
+
         .skeleton {
           animation: pulse 2s infinite;
         }
@@ -143,7 +257,7 @@ function StatsGrid({ stats }) {
         }
 
         .skeleton-value {
-          height: 28px;
+          height: 24px;
           background: var(--border-primary);
           border-radius: 4px;
           width: 80%;
@@ -151,7 +265,7 @@ function StatsGrid({ stats }) {
 
         @media (max-width: 768px) {
           .stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 0.75rem;
           }
 
@@ -160,12 +274,29 @@ function StatsGrid({ stats }) {
           }
 
           .stat-value {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
           }
         }
       `}</style>
     </>
   );
+}
+
+// Helper to get color name for utilization
+function getUtilizationColorName(utilization) {
+  if (utilization <= 50) return "green";
+  if (utilization <= 90) return "blue";
+  if (utilization <= 120) return "amber";
+  if (utilization <= 150) return "orange";
+  return "red";
+}
+
+// Helper to get color name for saturation
+function getSaturationColorName(saturation) {
+  if (saturation <= 33) return "green";
+  if (saturation <= 66) return "amber";
+  if (saturation <= 90) return "orange";
+  return "red";
 }
 
 export default StatsGrid;

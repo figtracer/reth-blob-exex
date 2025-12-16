@@ -8,6 +8,12 @@ import {
   truncateAddress,
 } from "../utils/format";
 import ChainBadge from "./ChainBadge";
+import {
+  BLOB_TARGET,
+  BLOB_MAX,
+  classifyRegime,
+  getRegimeInfo,
+} from "../utils/protocol";
 
 function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
   // Memoize sliced data to prevent re-computation
@@ -168,51 +174,86 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                   <th>Time</th>
                   <th>Txs</th>
                   <th>Blobs</th>
-                  <th>Blob Size</th>
+                  <th>Utilization</th>
+                  <th>Regime</th>
                   <th>Blob Gas Price</th>
                 </tr>
               </thead>
               <tbody>
-                {displayedBlocks.map((block) => (
-                  <tr
-                    key={block.block_number}
-                    className="clickable"
-                    onClick={() => handleBlockClick(block)}
-                  >
-                    <td>
-                      <a
-                        href={`https://beaconcha.in/block/${block.block_number}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="number highlight block-number-link"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {formatNumber(block.block_number)}
-                      </a>
-                    </td>
-                    <td>
-                      <span className="muted">
-                        {formatTimeAgo(block.block_timestamp)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="number">{block.tx_count || 0}</span>
-                    </td>
-                    <td>
-                      <span className="number">{block.total_blobs || 0}</span>
-                    </td>
-                    <td>
-                      <span className="muted">
-                        {formatBytes(block.total_blob_size)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="number-alt">
-                        {formatGwei(block.gas_price)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {displayedBlocks.map((block) => {
+                  const utilization =
+                    ((block.total_blobs || 0) / BLOB_TARGET) * 100;
+                  const saturation =
+                    ((block.total_blobs || 0) / BLOB_MAX) * 100;
+                  const regime = classifyRegime(block.total_blobs || 0);
+                  const regimeInfo = getRegimeInfo(regime);
+
+                  return (
+                    <tr
+                      key={block.block_number}
+                      className="clickable"
+                      onClick={() => handleBlockClick(block)}
+                    >
+                      <td>
+                        <a
+                          href={`https://beaconcha.in/block/${block.block_number}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="number highlight block-number-link"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {formatNumber(block.block_number)}
+                        </a>
+                      </td>
+                      <td>
+                        <span className="muted">
+                          {formatTimeAgo(block.block_timestamp)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="number">{block.tx_count || 0}</span>
+                      </td>
+                      <td>
+                        <span className="number">{block.total_blobs || 0}</span>
+                      </td>
+                      <td>
+                        <div className="utilization-cell">
+                          <span
+                            className="number"
+                            style={{ color: regimeInfo.color }}
+                          >
+                            {utilization.toFixed(0)}%
+                          </span>
+                          <div className="mini-bar">
+                            <div
+                              className="mini-bar-fill"
+                              style={{
+                                width: `${Math.min(saturation, 100)}%`,
+                                backgroundColor: regimeInfo.color,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span
+                          className="regime-badge"
+                          style={{
+                            backgroundColor: regimeInfo.bgColor,
+                            color: regimeInfo.color,
+                          }}
+                        >
+                          {regimeInfo.label}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="number-alt">
+                          {formatGwei(block.gas_price)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -350,6 +391,36 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
 
         .block-number-link:hover {
           border-bottom-color: var(--accent-purple);
+        }
+
+        .utilization-cell {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .mini-bar {
+          width: 40px;
+          height: 4px;
+          background: var(--border-primary);
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .mini-bar-fill {
+          height: 100%;
+          border-radius: 2px;
+          transition: width 0.2s ease;
+        }
+
+        .regime-badge {
+          font-size: 0.625rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          padding: 0.2rem 0.4rem;
+          border-radius: 4px;
+          white-space: nowrap;
         }
 
         .skeleton {

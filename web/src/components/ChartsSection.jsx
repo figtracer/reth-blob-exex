@@ -10,8 +10,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  ReferenceLine,
 } from "recharts";
 import { getChainIcon, getChainColor } from "../utils/chains";
+import { BLOB_TARGET, BLOB_MAX } from "../utils/protocol";
 
 const tooltipStyles = {
   container: {
@@ -114,7 +116,16 @@ const ChainTick = ({ x, y, payload }) => {
 
 const formatGwei = (value) => value.toFixed(6);
 
-function ChartsSection({ chartData, chainStats, onBlockClick }) {
+// Get bar color based on blob count relative to target/max
+function getBlobBarColor(blobCount) {
+  if (blobCount <= BLOB_TARGET * 0.5) return "#22c55e"; // green - abundant
+  if (blobCount <= BLOB_TARGET * 0.9) return "#3b82f6"; // blue - normal
+  if (blobCount <= BLOB_TARGET * 1.2) return "#f59e0b"; // amber - pressured
+  if (blobCount <= BLOB_MAX) return "#f97316"; // orange - congested
+  return "#ef4444"; // red - saturated (at max)
+}
+
+function ChartsSection({ chartData, chainProfiles, onBlockClick }) {
   // Memoize processed chart data
   const blobsData = useMemo(() => {
     if (!chartData?.labels) return [];
@@ -133,17 +144,17 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
   }, [chartData?.labels, chartData?.gas_prices]);
 
   const chainData = useMemo(() => {
-    if (!chainStats) return [];
-    return chainStats
-      .filter((stat) => stat.blob_count > 0)
-      .sort((a, b) => b.blob_count - a.blob_count)
+    if (!chainProfiles) return [];
+    return chainProfiles
+      .filter((profile) => profile.total_blobs > 0)
+      .sort((a, b) => b.total_blobs - a.total_blobs)
       .slice(0, 10)
-      .map((stat) => ({
-        chain: stat.chain || "Unknown",
-        count: stat.blob_count || 0,
-        color: getChainColor(stat.chain),
+      .map((profile) => ({
+        chain: profile.chain || "Unknown",
+        count: profile.total_blobs || 0,
+        color: getChainColor(profile.chain),
       }));
-  }, [chainStats]);
+  }, [chainProfiles]);
 
   // Memoize click handler
   const handleChartClick = useCallback(
@@ -162,7 +173,7 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
     [onBlockClick],
   );
 
-  if (!chartData || !chainStats) {
+  if (!chartData || !chainProfiles) {
     return (
       <div className="charts-section">
         <div className="charts-grid">
@@ -223,11 +234,35 @@ function ChartsSection({ chartData, chainStats, onBlockClick }) {
                       cursor: "pointer",
                     }}
                   />
+                  <ReferenceLine
+                    y={BLOB_TARGET}
+                    stroke="#f59e0b"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `Target (${BLOB_TARGET})`,
+                      position: "right",
+                      fill: "#f59e0b",
+                      fontSize: 9,
+                    }}
+                  />
+                  <ReferenceLine
+                    y={BLOB_MAX}
+                    stroke="#ef4444"
+                    strokeDasharray="4 4"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `Max (${BLOB_MAX})`,
+                      position: "right",
+                      fill: "#ef4444",
+                      fontSize: 9,
+                    }}
+                  />
                   <Bar dataKey="blobs" radius={[2, 2, 0, 0]} maxBarSize={8}>
-                    {blobsData.map((_, index) => (
+                    {blobsData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill="#a78bfa"
+                        fill={getBlobBarColor(entry.blobs)}
                         style={{ cursor: "pointer" }}
                       />
                     ))}

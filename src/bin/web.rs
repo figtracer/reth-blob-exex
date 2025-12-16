@@ -15,6 +15,10 @@ type DbPath = Arc<String>;
 // Each blob is 128KB (131072 bytes) per EIP-4844
 const BLOB_SIZE_BYTES: u64 = 131072;
 
+// Protocol constants (BPO1 - update these for BPO2)
+const BLOB_TARGET: u64 = 10;
+const BLOB_MAX: u64 = 15;
+
 #[derive(Serialize)]
 struct Stats {
     total_blocks: u64,
@@ -46,6 +50,10 @@ struct Block {
     gas_price: u64,
     excess_blob_gas: u64,
     transactions: Vec<BlockTransaction>,
+    // Derived metrics
+    target_utilization: f64,
+    saturation_index: f64,
+    regime: String,
 }
 
 #[derive(Serialize)]
@@ -81,14 +89,6 @@ struct BlobTransaction {
     blob_hashes: Vec<String>,
 }
 
-#[derive(Serialize)]
-struct ChainStats {
-    chain: String,
-    tx_count: u64,
-    blob_count: u64,
-    percentage: f64,
-}
-
 #[derive(Deserialize)]
 struct TimeRangeQuery {
     hours: Option<u64>,
@@ -99,7 +99,96 @@ struct BlockQuery {
     block_number: u64,
 }
 
+// Rolling comparison stats (1h vs 24h vs baseline)
+#[derive(Serialize)]
+struct RollingComparison {
+    // Current hour metrics
+    hour_1: PeriodStats,
+    // Last 24 hours metrics
+    hour_24: PeriodStats,
+    // 7-day baseline for comparison
+    baseline_7d: PeriodStats,
+    // Protocol constants for frontend
+    blob_target: u64,
+    blob_max: u64,
+}
+
+#[derive(Serialize)]
+struct PeriodStats {
+    total_blobs: u64,
+    total_transactions: u64,
+    avg_blobs_per_block: f64,
+    avg_gas_price: f64,
+    avg_utilization: f64,
+    avg_saturation: f64,
+    block_count: u64,
+    // Regime distribution
+    regime_counts: RegimeCounts,
+}
+
+#[derive(Serialize)]
+struct RegimeCounts {
+    abundant: u64,
+    normal: u64,
+    pressured: u64,
+    congested: u64,
+    saturated: u64,
+}
+
+// Chain behavior profile (also serves as chain stats)
+#[derive(Serialize)]
+struct ChainProfile {
+    chain: String,
+    total_transactions: u64,
+    total_blobs: u64,
+    percentage: f64, // % of total blobs in time window
+    avg_blobs_per_tx: f64,
+    avg_posting_interval_secs: f64, // Average time between posts
+    hourly_activity: Vec<f64>,      // 24 hours, normalized 0-1
+    price_sensitivity: f64,         // Correlation: price up -> blobs down (negative = sensitive)
+}
+
+// Congestion heatmap data (hour x day)
+#[derive(Serialize)]
+struct CongestionHeatmap {
+    // 7 days x 24 hours = 168 cells
+    data: Vec<HeatmapCell>,
+    blob_target: u64,
+    blob_max: u64,
+}
+
+#[derive(Serialize)]
+struct HeatmapCell {
+    day_of_week: u8, // 0=Sunday, 6=Saturday
+    hour: u8,        // 0-23 UTC
+    avg_utilization: f64,
+    avg_saturation: f64,
+    avg_gas_price: f64,
+    block_count: u64,
+}
+
+#[derive(Deserialize)]
+struct HeatmapQuery {
+    days: Option<u64>, // How many days of history (default 7)
+}
+
 // Known L2 sequencer/batcher addresses
+// Classify block regime based on utilization
+fn classify_regime(total_blobs: u64) -> String {
+    let utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
+    if utilization <= 50.0 {
+        "abundant".to_string()
+    } else if utilization <= 90.0 {
+        "normal".to_string()
+    } else if utilization <= 120.0 {
+        "pressured".to_string()
+    } else if utilization <= 150.0 {
+        "congested".to_string()
+    } else {
+        "saturated".to_string()
+    }
+}
+
 fn identify_chain(address: &str) -> String {
     let addr = address.to_lowercase();
 
@@ -323,6 +412,10 @@ async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<Block>> {
                 })
                 .collect();
 
+            let target_utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
+            let saturation_index = (total_blobs as f64 / BLOB_MAX as f64) * 100.0;
+            let regime = classify_regime(total_blobs);
+
             Block {
                 block_number,
                 block_timestamp,
@@ -333,6 +426,9 @@ async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<Block>> {
                 gas_price,
                 excess_blob_gas,
                 transactions,
+                target_utilization,
+                saturation_index,
+                regime,
             }
         })
         .collect();
@@ -512,72 +608,6 @@ async fn get_blob_transactions(State(db_path): State<DbPath>) -> Json<Vec<BlobTr
     Json(txs)
 }
 
-async fn get_chain_stats(
-    State(db_path): State<DbPath>,
-    Query(params): Query<TimeRangeQuery>,
-) -> Json<Vec<ChainStats>> {
-    let conn = open_db(&db_path).expect("Failed to open database");
-
-    let hours = params.hours.unwrap_or(24);
-    let time_limit = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64
-        - (hours as i64 * 3600);
-
-    let mut stmt = conn
-        .prepare(
-            "SELECT sender, COUNT(*) as tx_count, SUM(blob_count) as blob_count
-             FROM blob_transactions
-             WHERE created_at >= ?
-             GROUP BY sender
-             ORDER BY blob_count DESC",
-        )
-        .unwrap();
-
-    let mut chain_map: HashMap<String, (u64, u64)> = HashMap::new();
-    let mut total_blobs = 0u64;
-
-    let rows = stmt
-        .query_map([time_limit], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, u64>(1)?,
-                row.get::<_, u64>(2)?,
-            ))
-        })
-        .unwrap();
-
-    for row in rows.flatten() {
-        let chain = identify_chain(&row.0);
-        let entry = chain_map.entry(chain).or_insert((0, 0));
-        entry.0 += row.1; // tx_count
-        entry.1 += row.2; // blob_count
-        total_blobs += row.2;
-    }
-
-    let mut stats: Vec<ChainStats> = chain_map
-        .into_iter()
-        .map(|(chain, (tx_count, blob_count))| {
-            let percentage = if total_blobs > 0 {
-                (blob_count as f64 / total_blobs as f64) * 100.0
-            } else {
-                0.0
-            };
-            ChainStats {
-                chain,
-                tx_count,
-                blob_count,
-                percentage,
-            }
-        })
-        .collect();
-
-    stats.sort_by(|a, b| b.blob_count.cmp(&a.blob_count));
-
-    Json(stats)
-}
-
 async fn get_block(
     State(db_path): State<DbPath>,
     Query(params): Query<BlockQuery>,
@@ -634,6 +664,10 @@ async fn get_block(
             })
             .collect();
 
+        let target_utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
+        let saturation_index = (total_blobs as f64 / BLOB_MAX as f64) * 100.0;
+        let regime = classify_regime(total_blobs);
+
         Json(Some(Block {
             block_number,
             block_timestamp,
@@ -644,10 +678,349 @@ async fn get_block(
             gas_price,
             excess_blob_gas,
             transactions,
+            target_utilization,
+            saturation_index,
+            regime,
         }))
     } else {
         Json(None)
     }
+}
+
+// Rolling comparison: 1h vs 24h vs 7d baseline
+async fn get_rolling_comparison(State(db_path): State<DbPath>) -> Json<RollingComparison> {
+    let conn = open_db(&db_path).expect("Failed to open database");
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+
+    let hour_1_start = now - 3600;
+    let hour_24_start = now - 86400;
+    let baseline_start = now - (7 * 86400);
+
+    fn compute_period_stats(conn: &Connection, start_time: i64, end_time: i64) -> PeriodStats {
+        let mut stmt = conn
+            .prepare(
+                "SELECT total_blobs, tx_count, gas_price
+                 FROM blocks
+                 WHERE block_timestamp >= ? AND block_timestamp < ?",
+            )
+            .unwrap();
+
+        let rows: Vec<(u64, u64, u64)> = stmt
+            .query_map([start_time, end_time], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+
+        let block_count = rows.len() as u64;
+        if block_count == 0 {
+            return PeriodStats {
+                total_blobs: 0,
+                total_transactions: 0,
+                avg_blobs_per_block: 0.0,
+                avg_gas_price: 0.0,
+                avg_utilization: 0.0,
+                avg_saturation: 0.0,
+                block_count: 0,
+                regime_counts: RegimeCounts {
+                    abundant: 0,
+                    normal: 0,
+                    pressured: 0,
+                    congested: 0,
+                    saturated: 0,
+                },
+            };
+        }
+
+        let total_blobs: u64 = rows.iter().map(|(b, _, _)| b).sum();
+        let total_transactions: u64 = rows.iter().map(|(_, t, _)| t).sum();
+        let total_gas_price: u64 = rows.iter().map(|(_, _, g)| g).sum();
+
+        let mut regime_counts = RegimeCounts {
+            abundant: 0,
+            normal: 0,
+            pressured: 0,
+            congested: 0,
+            saturated: 0,
+        };
+
+        let mut total_utilization = 0.0;
+        let mut total_saturation = 0.0;
+
+        for (blobs, _, _) in &rows {
+            let utilization = (*blobs as f64 / BLOB_TARGET as f64) * 100.0;
+            let saturation = (*blobs as f64 / BLOB_MAX as f64) * 100.0;
+            total_utilization += utilization;
+            total_saturation += saturation;
+
+            match classify_regime(*blobs).as_str() {
+                "abundant" => regime_counts.abundant += 1,
+                "normal" => regime_counts.normal += 1,
+                "pressured" => regime_counts.pressured += 1,
+                "congested" => regime_counts.congested += 1,
+                "saturated" => regime_counts.saturated += 1,
+                _ => {}
+            }
+        }
+
+        PeriodStats {
+            total_blobs,
+            total_transactions,
+            avg_blobs_per_block: total_blobs as f64 / block_count as f64,
+            avg_gas_price: total_gas_price as f64 / block_count as f64,
+            avg_utilization: total_utilization / block_count as f64,
+            avg_saturation: total_saturation / block_count as f64,
+            block_count,
+            regime_counts,
+        }
+    }
+
+    let hour_1 = compute_period_stats(&conn, hour_1_start, now);
+    let hour_24 = compute_period_stats(&conn, hour_24_start, now);
+    let baseline_7d = compute_period_stats(&conn, baseline_start, now);
+
+    Json(RollingComparison {
+        hour_1,
+        hour_24,
+        baseline_7d,
+        blob_target: BLOB_TARGET,
+        blob_max: BLOB_MAX,
+    })
+}
+
+// Chain behavior profiles (replaces chain-stats - superset of that data)
+async fn get_chain_profiles(
+    State(db_path): State<DbPath>,
+    Query(params): Query<TimeRangeQuery>,
+) -> Json<Vec<ChainProfile>> {
+    let conn = open_db(&db_path).expect("Failed to open database");
+
+    let hours = params.hours.unwrap_or(24);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let time_limit = now - (hours as i64 * 3600);
+
+    // Get all transactions in the time range with their timestamps and gas prices
+    let mut stmt = conn
+        .prepare(
+            "SELECT bt.sender, bt.blob_count, bt.created_at, bt.gas_price
+             FROM blob_transactions bt
+             WHERE bt.created_at >= ?
+             ORDER BY bt.sender, bt.created_at",
+        )
+        .unwrap();
+
+    let rows: Vec<(String, u64, i64, u64)> = stmt
+        .query_map([time_limit], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .unwrap()
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Group by chain
+    let mut chain_data: HashMap<String, Vec<(u64, i64, u64)>> = HashMap::new();
+    let mut grand_total_blobs = 0u64;
+    for (sender, blob_count, timestamp, gas_price) in rows {
+        let chain = identify_chain(&sender);
+        chain_data
+            .entry(chain)
+            .or_default()
+            .push((blob_count, timestamp, gas_price));
+        grand_total_blobs += blob_count;
+    }
+
+    let mut profiles: Vec<ChainProfile> = chain_data
+        .into_iter()
+        .map(|(chain, txs)| {
+            let total_transactions = txs.len() as u64;
+            let total_blobs: u64 = txs.iter().map(|(b, _, _)| b).sum();
+            let avg_blobs_per_tx = if total_transactions > 0 {
+                total_blobs as f64 / total_transactions as f64
+            } else {
+                0.0
+            };
+
+            let percentage = if grand_total_blobs > 0 {
+                (total_blobs as f64 / grand_total_blobs as f64) * 100.0
+            } else {
+                0.0
+            };
+
+            // Calculate average posting interval
+            let mut timestamps: Vec<i64> = txs.iter().map(|(_, t, _)| *t).collect();
+            timestamps.sort();
+            let avg_posting_interval_secs = if timestamps.len() > 1 {
+                let intervals: Vec<i64> = timestamps.windows(2).map(|w| w[1] - w[0]).collect();
+                intervals.iter().sum::<i64>() as f64 / intervals.len() as f64
+            } else {
+                0.0
+            };
+
+            // Calculate hourly activity distribution (24 hours)
+            let mut hourly_counts = vec![0u64; 24];
+            for (_, timestamp, _) in &txs {
+                let hour = ((*timestamp % 86400) / 3600) as usize;
+                hourly_counts[hour] += 1;
+            }
+            let max_count = *hourly_counts.iter().max().unwrap_or(&1) as f64;
+            let hourly_activity: Vec<f64> = hourly_counts
+                .iter()
+                .map(|&c| {
+                    if max_count > 0.0 {
+                        c as f64 / max_count
+                    } else {
+                        0.0
+                    }
+                })
+                .collect();
+
+            // Calculate price sensitivity (correlation between price and blob count)
+            // Negative correlation = sensitive (reduces blobs when price high)
+            let price_sensitivity = if txs.len() > 10 {
+                let prices: Vec<f64> = txs.iter().map(|(_, _, p)| *p as f64).collect();
+                let blobs: Vec<f64> = txs.iter().map(|(b, _, _)| *b as f64).collect();
+                calculate_correlation(&prices, &blobs)
+            } else {
+                0.0
+            };
+
+            ChainProfile {
+                chain,
+                total_transactions,
+                total_blobs,
+                percentage,
+                avg_blobs_per_tx,
+                avg_posting_interval_secs,
+                hourly_activity,
+                price_sensitivity,
+            }
+        })
+        .collect();
+
+    profiles.sort_by(|a, b| b.total_blobs.cmp(&a.total_blobs));
+    Json(profiles)
+}
+
+// Helper function to calculate Pearson correlation
+fn calculate_correlation(x: &[f64], y: &[f64]) -> f64 {
+    if x.len() != y.len() || x.is_empty() {
+        return 0.0;
+    }
+
+    let n = x.len() as f64;
+    let sum_x: f64 = x.iter().sum();
+    let sum_y: f64 = y.iter().sum();
+    let sum_xy: f64 = x.iter().zip(y.iter()).map(|(a, b)| a * b).sum();
+    let sum_x2: f64 = x.iter().map(|a| a * a).sum();
+    let sum_y2: f64 = y.iter().map(|a| a * a).sum();
+
+    let numerator = n * sum_xy - sum_x * sum_y;
+    let denominator = ((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y)).sqrt();
+
+    if denominator == 0.0 {
+        0.0
+    } else {
+        numerator / denominator
+    }
+}
+
+// Congestion heatmap (hour x day of week)
+async fn get_congestion_heatmap(
+    State(db_path): State<DbPath>,
+    Query(params): Query<HeatmapQuery>,
+) -> Json<CongestionHeatmap> {
+    let conn = open_db(&db_path).expect("Failed to open database");
+
+    let days = params.days.unwrap_or(7);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let time_limit = now - (days as i64 * 86400);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT block_timestamp, total_blobs, gas_price
+             FROM blocks
+             WHERE block_timestamp >= ?",
+        )
+        .unwrap();
+
+    let rows: Vec<(i64, u64, u64)> = stmt
+        .query_map([time_limit], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })
+        .unwrap()
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Group by (day_of_week, hour)
+    // day_of_week: 0=Sunday, 6=Saturday (standard Unix convention)
+    let mut cell_data: HashMap<(u8, u8), Vec<(u64, u64)>> = HashMap::new();
+
+    for (timestamp, total_blobs, gas_price) in rows {
+        // Calculate day of week and hour from Unix timestamp
+        // Unix epoch (Jan 1, 1970) was a Thursday (day 4)
+        let days_since_epoch = timestamp / 86400;
+        let day_of_week = ((days_since_epoch + 4) % 7) as u8; // 0=Sunday
+        let hour = ((timestamp % 86400) / 3600) as u8;
+
+        cell_data
+            .entry((day_of_week, hour))
+            .or_default()
+            .push((total_blobs, gas_price));
+    }
+
+    let mut data: Vec<HeatmapCell> = Vec::new();
+
+    // Generate all 168 cells (7 days x 24 hours)
+    for day in 0..7u8 {
+        for hour in 0..24u8 {
+            let cell = if let Some(blocks) = cell_data.get(&(day, hour)) {
+                let block_count = blocks.len() as u64;
+                let total_blobs: u64 = blocks.iter().map(|(b, _)| b).sum();
+                let total_gas: u64 = blocks.iter().map(|(_, g)| g).sum();
+
+                let avg_blobs = total_blobs as f64 / block_count as f64;
+                let avg_utilization = (avg_blobs / BLOB_TARGET as f64) * 100.0;
+                let avg_saturation = (avg_blobs / BLOB_MAX as f64) * 100.0;
+                let avg_gas_price = total_gas as f64 / block_count as f64;
+
+                HeatmapCell {
+                    day_of_week: day,
+                    hour,
+                    avg_utilization,
+                    avg_saturation,
+                    avg_gas_price,
+                    block_count,
+                }
+            } else {
+                HeatmapCell {
+                    day_of_week: day,
+                    hour,
+                    avg_utilization: 0.0,
+                    avg_saturation: 0.0,
+                    avg_gas_price: 0.0,
+                    block_count: 0,
+                }
+            };
+            data.push(cell);
+        }
+    }
+
+    Json(CongestionHeatmap {
+        data,
+        blob_target: BLOB_TARGET,
+        blob_max: BLOB_MAX,
+    })
 }
 
 async fn index() -> impl IntoResponse {
@@ -676,7 +1049,9 @@ async fn main() -> eyre::Result<()> {
         .route("/api/senders", get(get_top_senders))
         .route("/api/chart", get(get_chart_data))
         .route("/api/blob-transactions", get(get_blob_transactions))
-        .route("/api/chain-stats", get(get_chain_stats))
+        .route("/api/rolling-comparison", get(get_rolling_comparison))
+        .route("/api/chain-profiles", get(get_chain_profiles))
+        .route("/api/congestion-heatmap", get(get_congestion_heatmap))
         .nest_service("/assets", ServeDir::new(format!("{}/assets", static_dir)))
         .nest_service("/icons", ServeDir::new(format!("{}/icons", static_dir)))
         .layer(CorsLayer::permissive())
