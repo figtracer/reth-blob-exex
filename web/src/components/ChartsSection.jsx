@@ -393,7 +393,7 @@ function ChartsSection({ chartData, chainProfiles, onBlockClick }) {
 
       <style jsx>{`
         .charts-section {
-          margin-bottom: 3rem;
+          margin-bottom: 1.5rem;
         }
 
         .charts-grid {

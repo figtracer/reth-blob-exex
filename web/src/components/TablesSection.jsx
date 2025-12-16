@@ -159,7 +159,7 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
         </div>
 
         {/* Recent Blocks */}
-        <div className="table-card fade-in" style={{ marginTop: "1rem" }}>
+        <div className="table-card fade-in" style={{ marginTop: "3rem" }}>
           <h2 className="table-title">Recent Blocks</h2>
           <div className="table-scroll">
             <table className="data-table">
@@ -244,7 +244,7 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
 
       <style jsx>{`
         .tables-section {
-          margin-bottom: 3rem;
+          margin-bottom: 2rem;
         }
 
         .tables-grid {
