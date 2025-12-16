@@ -76,11 +76,15 @@ function BlockModal({ block, onClose }) {
                   <div
                     className="metric-bar-fill"
                     style={{
-                      width: `${Math.min(targetUtilization / 2, 100)}%`,
+                      width: `${Math.min((targetUtilization / 150) * 100, 100)}%`,
                       backgroundColor: utilizationColor,
                     }}
                   />
-                  <div className="metric-bar-marker" title="Target (100%)" />
+                  <div
+                    className="metric-bar-marker"
+                    title="Target (100%)"
+                    style={{ left: `${(100 / 150) * 100}%` }}
+                  />
                 </div>
               </div>
               <div className="metric-item">

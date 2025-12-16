@@ -64,7 +64,7 @@ function StatsGrid({ stats }) {
       color: getUtilizationColorName(targetUtilization),
       hasBar: true,
       barValue: targetUtilization,
-      barMax: 200,
+      barMax: 150,
       barMarker: 100, // 100% marker
     },
     {
