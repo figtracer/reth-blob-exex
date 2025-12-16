@@ -420,13 +420,13 @@ function BlockModal({ block, onClose }) {
           padding: 1rem;
         }
 
-        .metric-label {
-          margin-bottom: 0.25rem;
+        .detail-label {
           font-size: 0.7rem;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.05em;
           color: var(--text-secondary);
+          margin-bottom: 0.5rem;
         }
 
         .detail-value {
