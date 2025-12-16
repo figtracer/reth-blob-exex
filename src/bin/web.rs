@@ -53,7 +53,6 @@ struct Block {
     // Derived metrics
     target_utilization: f64,
     saturation_index: f64,
-    regime: String,
 }
 
 #[derive(Serialize)]
@@ -109,7 +108,6 @@ struct ChainProfile {
     avg_blobs_per_tx: f64,
     avg_posting_interval_secs: f64, // Average time between posts
     hourly_activity: Vec<f64>,      // 24 hours, normalized 0-1
-    price_sensitivity: f64,         // Correlation: price up -> blobs down (negative = sensitive)
 }
 
 // Congestion heatmap data (hour x day)
@@ -134,23 +132,6 @@ struct HeatmapCell {
 #[derive(Deserialize)]
 struct HeatmapQuery {
     days: Option<u64>, // How many days of history (default 7)
-}
-
-// Known L2 sequencer/batcher addresses
-// Classify block regime based on utilization
-fn classify_regime(total_blobs: u64) -> String {
-    let utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
-    if utilization <= 50.0 {
-        "abundant".to_string()
-    } else if utilization <= 90.0 {
-        "normal".to_string()
-    } else if utilization <= 120.0 {
-        "pressured".to_string()
-    } else if utilization <= 150.0 {
-        "congested".to_string()
-    } else {
-        "saturated".to_string()
-    }
 }
 
 fn identify_chain(address: &str) -> String {
@@ -378,7 +359,6 @@ async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<Block>> {
 
             let target_utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
             let saturation_index = (total_blobs as f64 / BLOB_MAX as f64) * 100.0;
-            let regime = classify_regime(total_blobs);
 
             Block {
                 block_number,
@@ -392,7 +372,6 @@ async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<Block>> {
                 transactions,
                 target_utilization,
                 saturation_index,
-                regime,
             }
         })
         .collect();
@@ -630,7 +609,6 @@ async fn get_block(
 
         let target_utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
         let saturation_index = (total_blobs as f64 / BLOB_MAX as f64) * 100.0;
-        let regime = classify_regime(total_blobs);
 
         Json(Some(Block {
             block_number,
@@ -644,7 +622,6 @@ async fn get_block(
             transactions,
             target_utilization,
             saturation_index,
-            regime,
         }))
     } else {
         Json(None)
@@ -740,18 +717,6 @@ async fn get_chain_profiles(
                 })
                 .collect();
 
-            // Calculate price timing pattern (correlation between price and blob count)
-            // Negative correlation = posts during off-peak/low-price periods
-            // Positive correlation = posts during peak/high-price periods
-            // Note: This measures timing patterns, not true price responsiveness
-            let price_sensitivity = if txs.len() > 10 {
-                let prices: Vec<f64> = txs.iter().map(|(_, _, p)| *p as f64).collect();
-                let blobs: Vec<f64> = txs.iter().map(|(b, _, _)| *b as f64).collect();
-                calculate_correlation(&prices, &blobs)
-            } else {
-                0.0
-            };
-
             ChainProfile {
                 chain,
                 total_transactions,
@@ -760,36 +725,12 @@ async fn get_chain_profiles(
                 avg_blobs_per_tx,
                 avg_posting_interval_secs,
                 hourly_activity,
-                price_sensitivity,
             }
         })
         .collect();
 
     profiles.sort_by(|a, b| b.total_blobs.cmp(&a.total_blobs));
     Json(profiles)
-}
-
-// Helper function to calculate Pearson correlation
-fn calculate_correlation(x: &[f64], y: &[f64]) -> f64 {
-    if x.len() != y.len() || x.is_empty() {
-        return 0.0;
-    }
-
-    let n = x.len() as f64;
-    let sum_x: f64 = x.iter().sum();
-    let sum_y: f64 = y.iter().sum();
-    let sum_xy: f64 = x.iter().zip(y.iter()).map(|(a, b)| a * b).sum();
-    let sum_x2: f64 = x.iter().map(|a| a * a).sum();
-    let sum_y2: f64 = y.iter().map(|a| a * a).sum();
-
-    let numerator = n * sum_xy - sum_x * sum_y;
-    let denominator = ((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y)).sqrt();
-
-    if denominator == 0.0 {
-        0.0
-    } else {
-        numerator / denominator
-    }
 }
 
 // Congestion heatmap (hour x day of week)

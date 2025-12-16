@@ -1,10 +1,4 @@
-import {
-  BLOB_TARGET,
-  BLOB_MAX,
-  BLOB_SIZE_BYTES,
-  getRegimeInfo,
-  classifyRegime,
-} from "../utils/protocol";
+import { BLOB_TARGET, BLOB_MAX, BLOB_SIZE_BYTES } from "../utils/protocol";
 
 function StatsGrid({ stats }) {
   if (!stats) {
@@ -45,8 +39,6 @@ function StatsGrid({ stats }) {
   const avgBlobs = stats.avg_blobs_per_block ?? 0;
   const targetUtilization = (avgBlobs / BLOB_TARGET) * 100;
   const saturationIndex = (avgBlobs / BLOB_MAX) * 100;
-  const regime = classifyRegime(avgBlobs);
-  const regimeInfo = getRegimeInfo(regime);
 
   const statCards = [
     {
@@ -83,12 +75,6 @@ function StatsGrid({ stats }) {
       hasBar: true,
       barValue: saturationIndex,
       barMax: 100,
-    },
-    {
-      title: "Current Regime",
-      value: regimeInfo.label,
-      subtitle: regimeInfo.description,
-      customColor: regimeInfo.color,
     },
     {
       title: "Blob Gas Price",

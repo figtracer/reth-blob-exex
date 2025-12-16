@@ -7,13 +7,7 @@ import {
   truncateHash,
 } from "../utils/format";
 import ChainBadge from "./ChainBadge";
-import {
-  BLOB_TARGET,
-  BLOB_MAX,
-  DATA_GAS_PER_BLOB,
-  classifyRegime,
-  getRegimeInfo,
-} from "../utils/protocol";
+import { BLOB_TARGET, BLOB_MAX, DATA_GAS_PER_BLOB } from "../utils/protocol";
 
 function BlockModal({ block, onClose }) {
   if (!block) return null;
@@ -35,8 +29,6 @@ function BlockModal({ block, onClose }) {
   // Derived metrics
   const targetUtilization = (totalBlobs / BLOB_TARGET) * 100;
   const saturationIndex = (totalBlobs / BLOB_MAX) * 100;
-  const regime = classifyRegime(totalBlobs);
-  const regimeInfo = getRegimeInfo(regime);
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -51,15 +43,6 @@ function BlockModal({ block, onClose }) {
           <div className="modal-header">
             <div className="modal-header-left">
               <h2 className="modal-title">Block Details</h2>
-              <span
-                className="regime-badge"
-                style={{
-                  backgroundColor: regimeInfo.bgColor,
-                  color: regimeInfo.color,
-                }}
-              >
-                {regimeInfo.label}
-              </span>
             </div>
             <button
               className="modal-close"
@@ -75,10 +58,7 @@ function BlockModal({ block, onClose }) {
             <div className="metrics-banner">
               <div className="metric-item">
                 <span className="metric-label">Target Utilization</span>
-                <span
-                  className="metric-value"
-                  style={{ color: regimeInfo.color }}
-                >
+                <span className="metric-value">
                   {targetUtilization.toFixed(1)}%
                 </span>
                 <div className="metric-bar">
@@ -86,7 +66,6 @@ function BlockModal({ block, onClose }) {
                     className="metric-bar-fill"
                     style={{
                       width: `${Math.min(targetUtilization / 2, 100)}%`,
-                      backgroundColor: regimeInfo.color,
                     }}
                   />
                   <div className="metric-bar-marker" title="Target (100%)" />
@@ -94,10 +73,7 @@ function BlockModal({ block, onClose }) {
               </div>
               <div className="metric-item">
                 <span className="metric-label">Saturation Index</span>
-                <span
-                  className="metric-value"
-                  style={{ color: regimeInfo.color }}
-                >
+                <span className="metric-value">
                   {saturationIndex.toFixed(1)}%
                 </span>
                 <div className="metric-bar">
@@ -105,22 +81,9 @@ function BlockModal({ block, onClose }) {
                     className="metric-bar-fill"
                     style={{
                       width: `${Math.min(saturationIndex, 100)}%`,
-                      backgroundColor: regimeInfo.color,
                     }}
                   />
                 </div>
-              </div>
-              <div className="metric-item">
-                <span className="metric-label">Regime</span>
-                <span
-                  className="metric-value"
-                  style={{ color: regimeInfo.color }}
-                >
-                  {regimeInfo.label}
-                </span>
-                <span className="metric-description">
-                  {regimeInfo.description}
-                </span>
               </div>
             </div>
 
@@ -309,15 +272,6 @@ function BlockModal({ block, onClose }) {
           color: var(--text-primary);
         }
 
-        .regime-badge {
-          font-size: 0.625rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-        }
-
         .modal-close {
           display: flex;
           align-items: center;
@@ -346,7 +300,7 @@ function BlockModal({ block, onClose }) {
 
         .metrics-banner {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 1rem;
           margin-bottom: 1.5rem;
           padding: 1rem;

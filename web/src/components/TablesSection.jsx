@@ -8,12 +8,7 @@ import {
   truncateAddress,
 } from "../utils/format";
 import ChainBadge from "./ChainBadge";
-import {
-  BLOB_TARGET,
-  BLOB_MAX,
-  classifyRegime,
-  getRegimeInfo,
-} from "../utils/protocol";
+import { BLOB_TARGET, BLOB_MAX } from "../utils/protocol";
 
 function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
   // Memoize sliced data to prevent re-computation
@@ -175,7 +170,6 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                   <th>Txs</th>
                   <th>Blobs</th>
                   <th>Utilization</th>
-                  <th>Regime</th>
                   <th>Blob Gas Price</th>
                 </tr>
               </thead>
@@ -185,8 +179,6 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                     ((block.total_blobs || 0) / BLOB_TARGET) * 100;
                   const saturation =
                     ((block.total_blobs || 0) / BLOB_MAX) * 100;
-                  const regime = classifyRegime(block.total_blobs || 0);
-                  const regimeInfo = getRegimeInfo(regime);
 
                   return (
                     <tr
@@ -218,10 +210,7 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                       </td>
                       <td>
                         <div className="utilization-cell">
-                          <span
-                            className="number"
-                            style={{ color: regimeInfo.color }}
-                          >
+                          <span className="number">
                             {utilization.toFixed(0)}%
                           </span>
                           <div className="mini-bar">
@@ -229,22 +218,10 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
                               className="mini-bar-fill"
                               style={{
                                 width: `${Math.min(saturation, 100)}%`,
-                                backgroundColor: regimeInfo.color,
                               }}
                             />
                           </div>
                         </div>
-                      </td>
-                      <td>
-                        <span
-                          className="regime-badge"
-                          style={{
-                            backgroundColor: regimeInfo.bgColor,
-                            color: regimeInfo.color,
-                          }}
-                        >
-                          {regimeInfo.label}
-                        </span>
                       </td>
                       <td>
                         <span className="number-alt">
@@ -411,16 +388,6 @@ function TablesSection({ blocks, senders, blobTransactions, onBlockClick }) {
           height: 100%;
           border-radius: 2px;
           transition: width 0.2s ease;
-        }
-
-        .regime-badge {
-          font-size: 0.625rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-          padding: 0.2rem 0.4rem;
-          border-radius: 4px;
-          white-space: nowrap;
         }
 
         .skeleton {
