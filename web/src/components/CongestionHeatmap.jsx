@@ -279,7 +279,7 @@ function CongestionHeatmap({ data }) {
         .hour-label {
           font-size: 0.5rem;
           color: var(--text-secondary);
-          width: 36px;
+          flex: 3;
           text-align: center;
         }
 
@@ -305,6 +305,7 @@ function CongestionHeatmap({ data }) {
         .cells-row {
           display: flex;
           gap: 2px;
+          flex: 1;
         }
 
         .legend {
@@ -412,7 +413,8 @@ function HeatmapCell({ cell, day, hour }) {
     >
       <style jsx>{`
         .heatmap-cell {
-          width: 10px;
+          flex: 1;
+          min-width: 8px;
           height: 20px;
           border-radius: 2px;
           transition: all 0.2s;
