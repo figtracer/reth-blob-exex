@@ -4,6 +4,8 @@ import {
   Bar,
   LineChart,
   Line,
+  PieChart,
+  Pie,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -59,7 +61,7 @@ const CustomTooltip = ({ active, payload, label, valueFormatter }) => {
   return null;
 };
 
-const ChainTooltip = ({ active, payload }) => {
+const ChainPieTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -68,50 +70,21 @@ const ChainTooltip = ({ active, payload }) => {
           {data.chain}
         </p>
         <p style={{ ...tooltipStyles.value, color: "#e4e4e7" }}>
-          Blobs: {data.count.toLocaleString()}
+          {data.count.toLocaleString()} blobs
+        </p>
+        <p
+          style={{
+            ...tooltipStyles.value,
+            color: "#71717a",
+            fontSize: "0.75rem",
+          }}
+        >
+          {data.percentage.toFixed(1)}%
         </p>
       </div>
     );
   }
   return null;
-};
-
-// Custom Y-axis tick with chain logo or "Other" text
-const ChainTick = ({ x, y, payload }) => {
-  // Defensive check - payload might be undefined or have no value
-  if (!payload || payload.value === undefined || payload.value === null) {
-    return null;
-  }
-
-  const chainName = String(payload.value);
-  const chainIcon = getChainIcon(chainName);
-
-  return (
-    <g transform={`translate(${x},${y})`}>
-      {chainIcon ? (
-        <image
-          x={-20}
-          y={-8}
-          width={16}
-          height={16}
-          href={chainIcon}
-          xlinkHref={chainIcon}
-          preserveAspectRatio="xMidYMid meet"
-        />
-      ) : (
-        <text
-          x={-12}
-          y={5}
-          textAnchor="middle"
-          fill="#71717a"
-          fontSize={9}
-          fontFamily="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
-        >
-          {chainName.length > 6 ? chainName.substring(0, 5) + "…" : chainName}
-        </text>
-      )}
-    </g>
-  );
 };
 
 const formatGwei = (value) => value.toFixed(6);
@@ -143,17 +116,25 @@ function ChartsSection({ chartData, chainProfiles, onBlockClick }) {
     }));
   }, [chartData?.labels, chartData?.gas_prices]);
 
-  const chainData = useMemo(() => {
-    if (!chainProfiles) return [];
-    return chainProfiles
+  const { chainData, totalBlobs } = useMemo(() => {
+    if (!chainProfiles) return { chainData: [], totalBlobs: 0 };
+
+    const filtered = chainProfiles
       .filter((profile) => profile.total_blobs > 0)
       .sort((a, b) => b.total_blobs - a.total_blobs)
-      .slice(0, 10)
-      .map((profile) => ({
-        chain: profile.chain || "Unknown",
-        count: profile.total_blobs || 0,
-        color: getChainColor(profile.chain),
-      }));
+      .slice(0, 10);
+
+    const total = filtered.reduce((sum, p) => sum + (p.total_blobs || 0), 0);
+
+    const data = filtered.map((profile) => ({
+      chain: profile.chain || "Unknown",
+      count: profile.total_blobs || 0,
+      color: getChainColor(profile.chain),
+      percentage: total > 0 ? ((profile.total_blobs || 0) / total) * 100 : 0,
+      icon: getChainIcon(profile.chain),
+    }));
+
+    return { chainData: data, totalBlobs: total };
   }, [chainProfiles]);
 
   // Memoize click handler
@@ -335,58 +316,65 @@ function ChartsSection({ chartData, chainProfiles, onBlockClick }) {
           </div>
         </div>
 
-        {/* Chain Stats Chart */}
+        {/* Chain Stats - Donut Chart with Legend */}
         <div className="chart-card fade-in">
           <div className="chart-header">
-            <h2 className="chart-title">Blobs by Chain</h2>
+            <h2 className="chart-title">Blobs by Chain (24h)</h2>
+            <span className="chart-subtitle">
+              {totalBlobs.toLocaleString()} total blobs
+            </span>
           </div>
-          <div className="chart-body">
-            <ResponsiveContainer
-              width="100%"
-              height={Math.max(300, chainData.length * 35)}
-            >
-              <BarChart
-                data={chainData}
-                layout="vertical"
-                margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#252530"
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  axisLine={{ stroke: "#252530" }}
-                  tickLine={false}
-                  tick={{ fill: "#71717a", fontSize: 11 }}
-                  tickFormatter={(value) => value.toLocaleString()}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="chain"
-                  axisLine={{ stroke: "#252530" }}
-                  tickLine={false}
-                  tick={<ChainTick />}
-                  width={30}
-                  interval={0}
-                />
-                <Tooltip
-                  content={<ChainTooltip />}
-                  cursor={{ fill: "rgba(167, 139, 250, 0.1)" }}
-                />
-                <Bar
-                  dataKey="count"
-                  radius={[0, 4, 4, 0]}
-                  maxBarSize={24}
-                  isAnimationActive={false}
-                >
-                  {chainData.map((entry) => (
-                    <Cell key={`chain-${entry.chain}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="chain-chart-body">
+            <div className="donut-container">
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={chainData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="count"
+                    isAnimationActive={false}
+                  >
+                    {chainData.map((entry) => (
+                      <Cell key={`pie-${entry.chain}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<ChainPieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="chain-legend">
+              {chainData.map((entry) => (
+                <div key={entry.chain} className="legend-item">
+                  <div className="legend-left">
+                    {entry.icon ? (
+                      <img
+                        src={entry.icon}
+                        alt={entry.chain}
+                        className="chain-icon"
+                      />
+                    ) : (
+                      <div
+                        className="chain-color-dot"
+                        style={{ backgroundColor: entry.color }}
+                      />
+                    )}
+                    <span className="chain-name">{entry.chain}</span>
+                  </div>
+                  <div className="legend-right">
+                    <span className="chain-count">
+                      {entry.count.toLocaleString()}
+                    </span>
+                    <span className="chain-percentage">
+                      {entry.percentage.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -419,6 +407,9 @@ function ChartsSection({ chartData, chainProfiles, onBlockClick }) {
           padding: 1rem 1.25rem;
           border-bottom: 1px solid var(--border-primary);
           background: var(--bg-secondary);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
         }
 
         .chart-title {
@@ -430,9 +421,91 @@ function ChartsSection({ chartData, chainProfiles, onBlockClick }) {
           margin: 0;
         }
 
+        .chart-subtitle {
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+        }
+
         .chart-body {
           padding: 1rem;
           cursor: pointer;
+        }
+
+        .chain-chart-body {
+          display: flex;
+          padding: 1rem;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .donut-container {
+          flex: 0 0 200px;
+          min-width: 200px;
+        }
+
+        .chain-legend {
+          flex: 1;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.5rem;
+        }
+
+        .legend-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0.75rem;
+          background: var(--bg-secondary);
+          border-radius: 6px;
+          transition: all 0.15s;
+        }
+
+        .legend-item:hover {
+          background: var(--border-primary);
+        }
+
+        .legend-left {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .chain-icon {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+        }
+
+        .chain-color-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+        }
+
+        .chain-name {
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: var(--text-primary);
+        }
+
+        .legend-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 0.125rem;
+        }
+
+        .chain-count {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          font-variant-numeric: tabular-nums;
+        }
+
+        .chain-percentage {
+          font-size: 0.625rem;
+          color: var(--text-secondary);
+          font-variant-numeric: tabular-nums;
         }
 
         .skeleton {
@@ -458,11 +531,29 @@ function ChartsSection({ chartData, chainProfiles, onBlockClick }) {
           .charts-grid {
             grid-template-columns: 1fr;
           }
+
+          .chain-chart-body {
+            flex-direction: column;
+          }
+
+          .donut-container {
+            flex: none;
+            width: 100%;
+          }
+
+          .chain-legend {
+            grid-template-columns: repeat(2, 1fr);
+            width: 100%;
+          }
         }
 
         @media (max-width: 768px) {
           .chart-body {
             padding: 0.75rem;
+          }
+
+          .chain-legend {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

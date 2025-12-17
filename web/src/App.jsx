@@ -5,6 +5,7 @@ import TablesSection from "./components/TablesSection";
 import BlockModal from "./components/BlockModal";
 import Footer from "./components/Footer";
 import ChainProfiles from "./components/ChainProfiles";
+import DailyBlobsGraph from "./components/DailyBlobsGraph";
 
 // Lazy load charts to improve initial load time
 const ChartsSection = lazy(() => import("./components/ChartsSection"));
@@ -22,19 +23,28 @@ function App() {
 
   // State for derived metrics
   const [chainProfiles, setChainProfiles] = useState([]);
+  const [dailyBlobs, setDailyBlobs] = useState([]);
 
   // Fetch all data - memoized to prevent recreation
   const fetchData = useCallback(async () => {
     try {
-      const [statsRes, blocksRes, sendersRes, chartRes, txsRes, profilesRes] =
-        await Promise.all([
-          fetch("/api/stats"),
-          fetch("/api/blocks"),
-          fetch("/api/senders"),
-          fetch(`/api/chart?blocks=${selectedBlocks}`),
-          fetch("/api/blob-transactions"),
-          fetch("/api/chain-profiles"),
-        ]);
+      const [
+        statsRes,
+        blocksRes,
+        sendersRes,
+        chartRes,
+        txsRes,
+        profilesRes,
+        dailyRes,
+      ] = await Promise.all([
+        fetch("/api/stats"),
+        fetch("/api/blocks"),
+        fetch("/api/senders"),
+        fetch(`/api/chart?blocks=${selectedBlocks}`),
+        fetch("/api/blob-transactions"),
+        fetch("/api/chain-profiles"),
+        fetch("/api/daily-blobs"),
+      ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
       if (blocksRes.ok) setBlocks(await blocksRes.json());
@@ -42,6 +52,7 @@ function App() {
       if (chartRes.ok) setChartData(await chartRes.json());
       if (txsRes.ok) setBlobTransactions(await txsRes.json());
       if (profilesRes.ok) setChainProfiles(await profilesRes.json());
+      if (dailyRes.ok) setDailyBlobs(await dailyRes.json());
 
       setLastUpdate(new Date());
       setIsLoading(false);
@@ -97,6 +108,8 @@ function App() {
         ) : (
           <>
             <StatsGrid stats={stats} />
+
+            <DailyBlobsGraph data={dailyBlobs} />
 
             <Suspense fallback={<ChartsSkeleton />}>
               <ChartsSection
