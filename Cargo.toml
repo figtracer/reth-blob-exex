@@ -5,11 +5,11 @@ edition = "2021"
 
 [[bin]]
 name = "blob-exex"
-path = "src/main.rs"
+path = "src/exex.rs"
 
 [[bin]]
 name = "blob-web"
-path = "src/bin/web.rs"
+path = "src/web.rs"
 
 [dependencies]
 # reth
