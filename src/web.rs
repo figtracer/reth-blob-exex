@@ -5,12 +5,10 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use rusqlite::Connection;
+use blob_exex::Database;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 use tower_http::{cors::CorsLayer, services::ServeDir};
-
-type DbPath = Arc<String>;
 
 // Each blob is 128KB (131072 bytes) per EIP-4844
 const BLOB_SIZE_BYTES: u64 = 131072;
@@ -217,134 +215,55 @@ fn identify_chain(address: &str) -> String {
     }
 }
 
-fn open_db(path: &str) -> Result<Connection, rusqlite::Error> {
-    let conn = Connection::open(path)?;
-    conn.pragma_update(None, "journal_mode", "WAL")?;
-    Ok(conn)
-}
-
-async fn get_stats(State(db_path): State<DbPath>) -> Json<Stats> {
-    let conn = open_db(&db_path).expect("Failed to open database");
-
-    let total_blocks: u64 = conn
-        .query_row("SELECT COUNT(*) FROM blocks", [], |row| row.get(0))
-        .unwrap_or(0);
-
-    let total_blobs: u64 = conn
-        .query_row(
-            "SELECT COALESCE(SUM(blob_count), 0) FROM blob_transactions",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
-
-    let total_transactions: u64 = conn
-        .query_row("SELECT COALESCE(SUM(tx_count), 0) FROM blocks", [], |row| {
-            row.get(0)
-        })
-        .unwrap_or(0);
-
-    let latest_block: Option<u64> = conn
-        .query_row("SELECT MAX(block_number) FROM blocks", [], |row| row.get(0))
-        .ok();
-
-    let earliest_block: Option<u64> = conn
-        .query_row("SELECT MIN(block_number) FROM blocks", [], |row| row.get(0))
-        .ok();
-
-    let latest_gas_price: u64 = conn
-        .query_row(
-            "SELECT gas_price FROM blocks ORDER BY block_number DESC LIMIT 1",
-            [],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
-
-    let avg_blobs_per_block = if total_blocks > 0 {
-        total_blobs as f64 / total_blocks as f64
-    } else {
-        0.0
-    };
+async fn get_stats(State(db): State<Database>) -> Json<Stats> {
+    let stats = db.get_stats().expect("Failed to get stats");
 
     Json(Stats {
-        total_blocks,
-        total_blobs,
-        total_transactions,
-        avg_blobs_per_block,
-        latest_block,
-        earliest_block,
-        latest_gas_price,
+        total_blocks: stats.total_blocks,
+        total_blobs: stats.total_blobs,
+        total_transactions: stats.total_transactions,
+        avg_blobs_per_block: stats.avg_blobs_per_block,
+        latest_block: stats.latest_block,
+        earliest_block: stats.earliest_block,
+        latest_gas_price: stats.latest_gas_price,
     })
 }
 
-async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<Block>> {
-    let conn = open_db(&db_path).expect("Failed to open database");
-
-    let mut stmt = conn
-        .prepare(
-            "SELECT block_number, block_timestamp, tx_count, total_blobs, gas_used, gas_price, excess_blob_gas
-             FROM blocks ORDER BY block_number DESC LIMIT 50",
-        )
-        .unwrap();
-
-    let block_data: Vec<(u64, u64, u64, u64, u64, u64, u64)> = stmt
-        .query_map([], |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-                row.get(5)?,
-                row.get(6)?,
-            ))
-        })
-        .unwrap()
-        .filter_map(|r| r.ok())
-        .collect();
+async fn get_recent_blocks(State(db): State<Database>) -> Json<Vec<Block>> {
+    let block_data = db
+        .get_recent_blocks(50)
+        .expect("Failed to get recent blocks");
 
     let blocks: Vec<Block> = block_data
         .into_iter()
-        .map(|(block_number, block_timestamp, tx_count, total_blobs, gas_used, gas_price, excess_blob_gas)| {
-            // Fetch transactions for this block
-            let mut tx_stmt = conn
-                .prepare(
-                    "SELECT tx_hash, sender, blob_count FROM blob_transactions WHERE block_number = ?",
-                )
-                .unwrap();
-
-            let transactions: Vec<BlockTransaction> = tx_stmt
-                .query_map([block_number], |row| {
-                    let sender: String = row.get(1)?;
-                    let blob_count: u64 = row.get(2)?;
-                    Ok((row.get::<_, String>(0)?, sender, blob_count))
-                })
-                .unwrap()
-                .filter_map(|r| r.ok())
-                .map(|(tx_hash, sender, blob_count)| {
-                    let chain = identify_chain(&sender);
+        .map(|b| {
+            let transactions: Vec<BlockTransaction> = b
+                .transactions
+                .into_iter()
+                .map(|tx| {
+                    let chain = identify_chain(&tx.sender);
                     BlockTransaction {
-                        tx_hash,
-                        sender,
-                        blob_count,
-                        blob_size: blob_count * BLOB_SIZE_BYTES,
+                        tx_hash: tx.tx_hash,
+                        sender: tx.sender,
+                        blob_count: tx.blob_count,
+                        blob_size: tx.blob_count * BLOB_SIZE_BYTES,
                         chain,
                     }
                 })
                 .collect();
 
-            let target_utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
-            let saturation_index = (total_blobs as f64 / BLOB_MAX as f64) * 100.0;
+            let target_utilization = (b.total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
+            let saturation_index = (b.total_blobs as f64 / BLOB_MAX as f64) * 100.0;
 
             Block {
-                block_number,
-                block_timestamp,
-                tx_count,
-                total_blobs,
-                total_blob_size: total_blobs * BLOB_SIZE_BYTES,
-                gas_used,
-                gas_price,
-                excess_blob_gas,
+                block_number: b.block_number,
+                block_timestamp: b.block_timestamp,
+                tx_count: b.tx_count,
+                total_blobs: b.total_blobs,
+                total_blob_size: b.total_blobs * BLOB_SIZE_BYTES,
+                gas_used: b.gas_used,
+                gas_price: b.gas_price,
+                excess_blob_gas: b.excess_blob_gas,
                 transactions,
                 target_utilization,
                 saturation_index,
@@ -355,33 +274,18 @@ async fn get_recent_blocks(State(db_path): State<DbPath>) -> Json<Vec<Block>> {
     Json(blocks)
 }
 
-async fn get_top_senders(State(db_path): State<DbPath>) -> Json<Vec<Sender>> {
-    let conn = open_db(&db_path).expect("Failed to open database");
+async fn get_top_senders(State(db): State<Database>) -> Json<Vec<Sender>> {
+    let sender_data = db.get_top_senders(20).expect("Failed to get top senders");
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT address, tx_count, total_blobs
-             FROM senders ORDER BY total_blobs DESC LIMIT 20",
-        )
-        .unwrap();
-
-    let senders: Vec<Sender> = stmt
-        .query_map([], |row| {
-            let address: String = row.get(0)?;
-            let tx_count: u64 = row.get(1)?;
-            let total_blobs: u64 = row.get(2)?;
-            Ok((address, tx_count, total_blobs))
-        })
-        .unwrap()
-        .filter_map(|r| r.ok())
-        .map(|(address, tx_count, total_blobs)| {
-            let chain = identify_chain(&address);
-            let total_blob_size = total_blobs * BLOB_SIZE_BYTES;
+    let senders: Vec<Sender> = sender_data
+        .into_iter()
+        .map(|s| {
+            let chain = identify_chain(&s.address);
             Sender {
-                address,
-                tx_count,
-                total_blobs,
-                total_blob_size,
+                address: s.address,
+                tx_count: s.tx_count,
+                total_blobs: s.total_blobs,
+                total_blob_size: s.total_blobs * BLOB_SIZE_BYTES,
                 chain,
             }
         })
@@ -391,135 +295,39 @@ async fn get_top_senders(State(db_path): State<DbPath>) -> Json<Vec<Sender>> {
 }
 
 async fn get_chart_data(
-    State(db_path): State<DbPath>,
+    State(db): State<Database>,
     Query(params): Query<ChartQuery>,
 ) -> Json<ChartData> {
-    let conn = open_db(&db_path).expect("Failed to open database");
-
-    // Get the last N blocks (default 100)
     let num_blocks = params.blocks.unwrap_or(100);
-
-    // First, get the latest block number
-    let latest_block: u64 = conn
-        .query_row("SELECT MAX(block_number) FROM blocks", [], |row| row.get(0))
-        .unwrap_or(0);
-
-    if latest_block == 0 {
-        return Json(ChartData {
-            labels: Vec::new(),
-            blobs: Vec::new(),
-            gas_prices: Vec::new(),
-        });
-    }
-
-    let start_block = latest_block.saturating_sub(num_blocks - 1);
-
-    // Query all blocks in range from the blocks table (these all have blob data)
-    let mut stmt = conn
-        .prepare(
-            "SELECT block_number, total_blobs, gas_price
-             FROM blocks
-             WHERE block_number >= ? AND block_number <= ?
-             ORDER BY block_number ASC",
-        )
-        .unwrap();
-
-    // Build a map of block_number -> (blobs, gas_price)
-    let mut block_data: std::collections::HashMap<u64, (u64, u64)> =
-        std::collections::HashMap::new();
-    let mut last_gas_price: u64 = 0;
-
-    let rows = stmt
-        .query_map([start_block, latest_block], |row| {
-            Ok((
-                row.get::<_, u64>(0)?,
-                row.get::<_, u64>(1)?,
-                row.get::<_, u64>(2)?,
-            ))
-        })
-        .unwrap();
-
-    for row in rows.flatten() {
-        block_data.insert(row.0, (row.1, row.2));
-        last_gas_price = row.2;
-    }
-
-    // Generate data for every block in range
-    let mut labels = Vec::with_capacity(num_blocks as usize);
-    let mut blobs = Vec::with_capacity(num_blocks as usize);
-    let mut gas_prices = Vec::with_capacity(num_blocks as usize);
-
-    for block_num in start_block..=latest_block {
-        labels.push(block_num);
-        if let Some((blob_count, gas_price)) = block_data.get(&block_num) {
-            blobs.push(*blob_count);
-            gas_prices.push(*gas_price as f64 / 1e9);
-            last_gas_price = *gas_price;
-        } else {
-            // Block without blob transactions - show 0 blobs, use last known gas price
-            blobs.push(0);
-            gas_prices.push(last_gas_price as f64 / 1e9);
-        }
-    }
+    let chart_data = db
+        .get_chart_data(num_blocks)
+        .expect("Failed to get chart data");
 
     Json(ChartData {
-        labels,
-        blobs,
-        gas_prices,
+        labels: chart_data.labels,
+        blobs: chart_data.blobs,
+        gas_prices: chart_data.gas_prices,
     })
 }
 
-async fn get_blob_transactions(State(db_path): State<DbPath>) -> Json<Vec<BlobTransaction>> {
-    let conn = open_db(&db_path).expect("Failed to open database");
+async fn get_blob_transactions(State(db): State<Database>) -> Json<Vec<BlobTransaction>> {
+    let tx_data = db
+        .get_blob_transactions(50)
+        .expect("Failed to get blob transactions");
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT tx_hash, block_number, sender, blob_count, gas_price
-             FROM blob_transactions
-             ORDER BY created_at DESC
-             LIMIT 50",
-        )
-        .unwrap();
-
-    let txs: Vec<BlobTransaction> = stmt
-        .query_map([], |row| {
-            let tx_hash: String = row.get(0)?;
-            let sender: String = row.get(2)?;
-
-            Ok((
-                tx_hash.clone(),
-                row.get::<_, u64>(1)?,
-                sender.clone(),
-                row.get::<_, u64>(3)?,
-                row.get::<_, u64>(4)?,
-            ))
-        })
-        .unwrap()
-        .filter_map(|r| r.ok())
-        .map(|(tx_hash, block_number, sender, blob_count, gas_price)| {
-            // Get blob hashes for this transaction
-            let mut blob_stmt = conn
-                .prepare("SELECT blob_hash FROM blob_hashes WHERE tx_hash = ? ORDER BY blob_index")
-                .unwrap();
-
-            let blob_hashes: Vec<String> = blob_stmt
-                .query_map([&tx_hash], |row| row.get(0))
-                .unwrap()
-                .filter_map(|r| r.ok())
-                .collect();
-
-            let chain = identify_chain(&sender);
-            let blob_size = blob_count * BLOB_SIZE_BYTES;
-
+    let txs: Vec<BlobTransaction> = tx_data
+        .into_iter()
+        .map(|tx| {
+            let chain = identify_chain(&tx.sender);
             BlobTransaction {
-                tx_hash,
-                block_number,
-                sender,
-                blob_count,
-                blob_size,
-                gas_price,
+                tx_hash: tx.tx_hash,
+                block_number: tx.block_number,
+                sender: tx.sender,
+                blob_count: tx.blob_count,
+                blob_size: tx.blob_count * BLOB_SIZE_BYTES,
+                gas_price: tx.gas_price,
                 chain,
-                blob_hashes,
+                blob_hashes: tx.blob_hashes,
             }
         })
         .collect();
@@ -528,73 +336,41 @@ async fn get_blob_transactions(State(db_path): State<DbPath>) -> Json<Vec<BlobTr
 }
 
 async fn get_block(
-    State(db_path): State<DbPath>,
+    State(db): State<Database>,
     Query(params): Query<BlockQuery>,
 ) -> Json<Option<Block>> {
-    let conn = open_db(&db_path).expect("Failed to open database");
     let block_number = params.block_number;
 
-    // Check if block exists
-    let block_exists: Option<(u64, u64, u64, u64, u64, u64)> = conn
-        .query_row(
-            "SELECT block_timestamp, tx_count, total_blobs, gas_used, gas_price, excess_blob_gas
-             FROM blocks WHERE block_number = ?",
-            [block_number],
-            |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                ))
-            },
-        )
-        .ok();
+    let block_data = db.get_block(block_number).expect("Failed to get block");
 
-    if let Some((block_timestamp, tx_count, total_blobs, gas_used, gas_price, excess_blob_gas)) =
-        block_exists
-    {
-        // Fetch transactions for this block
-        let mut tx_stmt = conn
-            .prepare(
-                "SELECT tx_hash, sender, blob_count FROM blob_transactions WHERE block_number = ?",
-            )
-            .unwrap();
-
-        let transactions: Vec<BlockTransaction> = tx_stmt
-            .query_map([block_number], |row| {
-                let sender: String = row.get(1)?;
-                let blob_count: u64 = row.get(2)?;
-                Ok((row.get::<_, String>(0)?, sender, blob_count))
-            })
-            .unwrap()
-            .filter_map(|r| r.ok())
-            .map(|(tx_hash, sender, blob_count)| {
-                let chain = identify_chain(&sender);
+    if let Some(b) = block_data {
+        let transactions: Vec<BlockTransaction> = b
+            .transactions
+            .into_iter()
+            .map(|tx| {
+                let chain = identify_chain(&tx.sender);
                 BlockTransaction {
-                    tx_hash,
-                    sender,
-                    blob_count,
-                    blob_size: blob_count * BLOB_SIZE_BYTES,
+                    tx_hash: tx.tx_hash,
+                    sender: tx.sender,
+                    blob_count: tx.blob_count,
+                    blob_size: tx.blob_count * BLOB_SIZE_BYTES,
                     chain,
                 }
             })
             .collect();
 
-        let target_utilization = (total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
-        let saturation_index = (total_blobs as f64 / BLOB_MAX as f64) * 100.0;
+        let target_utilization = (b.total_blobs as f64 / BLOB_TARGET as f64) * 100.0;
+        let saturation_index = (b.total_blobs as f64 / BLOB_MAX as f64) * 100.0;
 
         Json(Some(Block {
-            block_number,
-            block_timestamp,
-            tx_count,
-            total_blobs,
-            total_blob_size: total_blobs * BLOB_SIZE_BYTES,
-            gas_used,
-            gas_price,
-            excess_blob_gas,
+            block_number: b.block_number,
+            block_timestamp: b.block_timestamp,
+            tx_count: b.tx_count,
+            total_blobs: b.total_blobs,
+            total_blob_size: b.total_blobs * BLOB_SIZE_BYTES,
+            gas_used: b.gas_used,
+            gas_price: b.gas_price,
+            excess_blob_gas: b.excess_blob_gas,
             transactions,
             target_utilization,
             saturation_index,
@@ -605,11 +381,9 @@ async fn get_block(
 }
 
 async fn get_chain_profiles(
-    State(db_path): State<DbPath>,
+    State(db): State<Database>,
     Query(params): Query<TimeRangeQuery>,
 ) -> Json<Vec<ChainProfile>> {
-    let conn = open_db(&db_path).expect("Failed to open database");
-
     let hours = params.hours.unwrap_or(24);
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -617,23 +391,9 @@ async fn get_chain_profiles(
         .as_secs() as i64;
     let time_limit = now - (hours as i64 * 3600);
 
-    // Get all transactions in the time range with their timestamps and gas prices
-    let mut stmt = conn
-        .prepare(
-            "SELECT bt.sender, bt.blob_count, bt.created_at, bt.gas_price
-             FROM blob_transactions bt
-             WHERE bt.created_at >= ?
-             ORDER BY bt.sender, bt.created_at",
-        )
-        .unwrap();
-
-    let rows: Vec<(String, u64, i64, u64)> = stmt
-        .query_map([time_limit], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
-        })
-        .unwrap()
-        .filter_map(|r| r.ok())
-        .collect();
+    let rows = db
+        .get_transactions_in_time_range(time_limit)
+        .expect("Failed to get transactions in time range");
 
     // Group by chain
     let mut chain_data: HashMap<String, Vec<(u64, i64, u64)>> = HashMap::new();
@@ -719,10 +479,8 @@ async fn index() -> impl IntoResponse {
 async fn main() -> eyre::Result<()> {
     let db_path = std::env::var("BLOB_DB_PATH").unwrap_or_else(|_| "blob_stats.db".to_string());
 
-    // Verify DB is accessible
-    let _ = open_db(&db_path)?;
-
-    let db_path: DbPath = Arc::new(db_path);
+    // Create database with thread-safe connection
+    let db = Database::new(&db_path)?;
 
     let static_dir = std::env::var("BLOB_STATIC_DIR").unwrap_or_else(|_| "web/dist".to_string());
 
@@ -738,7 +496,7 @@ async fn main() -> eyre::Result<()> {
         .nest_service("/assets", ServeDir::new(format!("{}/assets", static_dir)))
         .nest_service("/icons", ServeDir::new(format!("{}/icons", static_dir)))
         .layer(CorsLayer::permissive())
-        .with_state(db_path);
+        .with_state(db);
 
     let addr = std::env::var("BLOB_WEB_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".to_string());
     let listener = tokio::net::TcpListener::bind(&addr).await?;
