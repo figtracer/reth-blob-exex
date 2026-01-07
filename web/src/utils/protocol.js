@@ -2,8 +2,8 @@
 // Update these values when BPO2 or future forks activate
 
 // BPO1 (current) blob parameters
-export const BLOB_TARGET = 10;
-export const BLOB_MAX = 15;
+export const BLOB_TARGET = 14;
+export const BLOB_MAX = 21;
 
 // Each blob is 128KB (131072 bytes) per EIP-4844
 export const BLOB_SIZE_BYTES = 131072;
