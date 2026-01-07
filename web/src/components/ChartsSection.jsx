@@ -175,6 +175,7 @@ function ChartsSection({ chartData, onBlockClick }) {
                     tickLine={false}
                   />
                   <YAxis
+                    domain={[0, BLOB_MAX]}
                     axisLine={{ stroke: "#252530" }}
                     tickLine={false}
                     tick={{ fill: "#71717a", fontSize: 11 }}
