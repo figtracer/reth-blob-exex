@@ -227,6 +227,9 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
       {allTimeData.length > 0 && (
         <div className="charts-section">
           <div className="chart-card chart-card-large fade-in">
+            <div className="chart-header">
+              <h2 className="chart-title">All-Time</h2>
+            </div>
             <div className="chart-body-full">
               <ResponsiveContainer width="100%" height={280}>
                 <ComposedChart
