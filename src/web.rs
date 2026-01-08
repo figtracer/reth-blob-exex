@@ -1,9 +1,9 @@
 use axum::{
+    Json, Router,
     extract::{Query, State},
     http::header,
     response::{Html, IntoResponse},
     routing::get,
-    Json, Router,
 };
 use blob_exex::Database;
 use serde::{Deserialize, Serialize};
@@ -94,6 +94,18 @@ struct TimeRangeQuery {
 #[derive(Deserialize)]
 struct BlockQuery {
     block_number: u64,
+}
+
+// BPO2 activation timestamp (January 6, 2026)
+const BPO2_TIMESTAMP: u64 = 1767747671;
+
+#[derive(Serialize)]
+struct AllTimeChartData {
+    labels: Vec<u64>,        // Block numbers (sampled)
+    blobs: Vec<f64>,         // Smoothed blob counts
+    gas_prices: Vec<f64>,    // Smoothed gas prices in Gwei
+    timestamps: Vec<u64>,    // Block timestamps
+    bpo2_block: Option<u64>, // First block after BPO2 activation
 }
 
 // Chain behavior profile (also serves as chain stats)
@@ -380,6 +392,21 @@ async fn get_block(
     }
 }
 
+async fn get_all_time_chart(State(db): State<Database>) -> Json<AllTimeChartData> {
+    // Target ~500 data points for smooth visualization
+    let chart_data = db
+        .get_all_time_chart_data(500, BPO2_TIMESTAMP)
+        .expect("Failed to get all-time chart data");
+
+    Json(AllTimeChartData {
+        labels: chart_data.labels,
+        blobs: chart_data.blobs,
+        gas_prices: chart_data.gas_prices,
+        timestamps: chart_data.timestamps,
+        bpo2_block: chart_data.bpo2_block,
+    })
+}
+
 async fn get_chain_profiles(
     State(db): State<Database>,
     Query(params): Query<TimeRangeQuery>,
@@ -491,6 +518,7 @@ async fn main() -> eyre::Result<()> {
         .route("/api/block", get(get_block))
         .route("/api/senders", get(get_top_senders))
         .route("/api/chart", get(get_chart_data))
+        .route("/api/all-time-chart", get(get_all_time_chart))
         .route("/api/blob-transactions", get(get_blob_transactions))
         .route("/api/chain-profiles", get(get_chain_profiles))
         .nest_service("/assets", ServeDir::new(format!("{}/assets", static_dir)))

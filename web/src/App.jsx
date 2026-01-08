@@ -15,6 +15,7 @@ function App() {
   const [blocks, setBlocks] = useState([]);
   const [senders, setSenders] = useState([]);
   const [chartData, setChartData] = useState(null);
+  const [allTimeChartData, setAllTimeChartData] = useState(null);
   const [blobTransactions, setBlobTransactions] = useState([]);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [selectedBlocks, setSelectedBlocks] = useState(100);
@@ -33,6 +34,7 @@ function App() {
         blocksRes,
         sendersRes,
         chartRes,
+        allTimeChartRes,
         txsRes,
         profilesRes,
         profilesAllTimeRes,
@@ -41,6 +43,7 @@ function App() {
         fetch("/api/blocks"),
         fetch("/api/senders"),
         fetch(`/api/chart?blocks=${selectedBlocks}`),
+        fetch("/api/all-time-chart"),
         fetch("/api/blob-transactions"),
         fetch("/api/chain-profiles"),
         fetch("/api/chain-profiles?hours=87600"),
@@ -50,6 +53,7 @@ function App() {
       if (blocksRes.ok) setBlocks(await blocksRes.json());
       if (sendersRes.ok) setSenders(await sendersRes.json());
       if (chartRes.ok) setChartData(await chartRes.json());
+      if (allTimeChartRes.ok) setAllTimeChartData(await allTimeChartRes.json());
       if (txsRes.ok) setBlobTransactions(await txsRes.json());
       if (profilesRes.ok) setChainProfiles(await profilesRes.json());
       if (profilesAllTimeRes.ok)
@@ -94,6 +98,7 @@ function App() {
             <Suspense fallback={<ChartsSkeleton />}>
               <ChartsSection
                 chartData={chartData}
+                allTimeChartData={allTimeChartData}
                 onBlockClick={setSelectedBlock}
               />
             </Suspense>

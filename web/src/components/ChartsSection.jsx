@@ -5,6 +5,8 @@ import {
   Bar,
   LineChart,
   Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -20,6 +22,9 @@ import {
   BASE_BLUE,
   GRADIENT_COLORS,
 } from "../utils/protocol";
+
+// BPO2 activation timestamp (January 6, 2026)
+const BPO2_TIMESTAMP = 1767747671;
 
 const tooltipStyles = {
   container: {
@@ -91,7 +96,39 @@ function getBlobBarColor(blobCount) {
   return GRADIENT_COLORS.indigo; // 13.5-15 blobs (90%+ = max, always same color)
 }
 
-function ChartsSection({ chartData, onBlockClick }) {
+// Format timestamp to readable date
+function formatTimestamp(timestamp) {
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+// Custom tooltip for all-time chart
+const AllTimeTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={tooltipStyles.container}>
+        <p style={tooltipStyles.label}>
+          Block {label.toLocaleString()}
+          {data.timestamp && ` • ${formatTimestamp(data.timestamp)}`}
+        </p>
+        <p style={{ ...tooltipStyles.value, color: "#10b981" }}>
+          Avg Blobs: {data.blobs?.toFixed(1)}
+        </p>
+        <p style={{ ...tooltipStyles.value, color: "#ffffff" }}>
+          Avg Gas: {data.price?.toFixed(6)} Gwei
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
   // Memoize processed chart data
   const blobsData = useMemo(() => {
     if (!chartData?.labels) return [];
@@ -108,6 +145,19 @@ function ChartsSection({ chartData, onBlockClick }) {
       price: chartData.gas_prices?.[index] || 0,
     }));
   }, [chartData?.labels, chartData?.gas_prices]);
+
+  // Process all-time chart data
+  const allTimeData = useMemo(() => {
+    if (!allTimeChartData?.labels) return [];
+    return allTimeChartData.labels.map((label, index) => ({
+      block: label,
+      blobs: allTimeChartData.blobs?.[index] || 0,
+      price: allTimeChartData.gas_prices?.[index] || 0,
+      timestamp: allTimeChartData.timestamps?.[index] || 0,
+    }));
+  }, [allTimeChartData]);
+
+  const bpo2Block = allTimeChartData?.bpo2_block;
 
   // Memoize click handler
   const handleChartClick = useCallback(
@@ -149,6 +199,101 @@ function ChartsSection({ chartData, onBlockClick }) {
 
   return (
     <>
+      {/* All-Time Global Chart */}
+      {allTimeData.length > 0 && (
+        <div className="charts-section">
+          <div className="chart-card chart-card-large fade-in">
+            <div className="chart-header">
+              <h2 className="chart-title">All-Time Blob Gas Price</h2>
+              <span className="chart-subtitle">
+                {allTimeData.length > 0 &&
+                  `${allTimeData[0].block.toLocaleString()} - ${allTimeData[allTimeData.length - 1].block.toLocaleString()}`}
+              </span>
+            </div>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart
+                  data={allTimeData}
+                  margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="gasGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#252530"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="block"
+                    tick={{ fill: "#71717a", fontSize: 10 }}
+                    axisLine={{ stroke: "#252530" }}
+                    tickLine={false}
+                    tickFormatter={(value) => {
+                      const dataPoint = allTimeData.find(
+                        (d) => d.block === value,
+                      );
+                      if (dataPoint?.timestamp) {
+                        return formatTimestamp(dataPoint.timestamp);
+                      }
+                      return "";
+                    }}
+                    interval="preserveStartEnd"
+                    minTickGap={80}
+                  />
+                  <YAxis
+                    axisLine={{ stroke: "#252530" }}
+                    tickLine={false}
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    width={70}
+                    tickFormatter={(value) => value.toFixed(4)}
+                  />
+                  <Tooltip content={<AllTimeTooltip />} cursor={false} />
+                  {bpo2Block && (
+                    <ReferenceLine
+                      x={bpo2Block}
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      strokeDasharray="4 4"
+                      label={{
+                        value: "BPO2",
+                        position: "top",
+                        fill: "#f59e0b",
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    />
+                  )}
+                  <Area
+                    type="monotone"
+                    dataKey="price"
+                    stroke="#3b82f6"
+                    strokeWidth={1.5}
+                    fill="url(#gasGradient)"
+                    dot={false}
+                    activeDot={{
+                      r: 4,
+                      fill: "#3b82f6",
+                      stroke: "#16161f",
+                      strokeWidth: 2,
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="charts-section">
         <div className="charts-grid">
           {/* Blobs per Block Chart */}
@@ -308,6 +453,10 @@ function ChartsSection({ chartData, onBlockClick }) {
 
         .chart-card:hover {
           border-color: var(--border-secondary);
+        }
+
+        .chart-card-large {
+          margin-bottom: 1rem;
         }
 
         .chart-header {

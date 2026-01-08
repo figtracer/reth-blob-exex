@@ -521,6 +521,100 @@ impl Database {
         Ok(result)
     }
 
+    /// Get all-time chart data with smoothing for visualization.
+    /// Returns sampled data points to keep the chart performant.
+    pub fn get_all_time_chart_data(
+        &self,
+        target_points: u64,
+        bpo2_timestamp: u64,
+    ) -> eyre::Result<AllTimeChartData> {
+        let conn = self.connection();
+
+        // Get total block count and range
+        let (min_block, max_block): (u64, u64) = conn
+            .query_row(
+                "SELECT MIN(block_number), MAX(block_number) FROM blocks",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap_or((0, 0));
+
+        if max_block == 0 {
+            return Ok(AllTimeChartData {
+                labels: Vec::new(),
+                blobs: Vec::new(),
+                gas_prices: Vec::new(),
+                timestamps: Vec::new(),
+                bpo2_block: None,
+            });
+        }
+
+        let total_blocks = max_block - min_block + 1;
+        let sample_interval = (total_blocks / target_points).max(1);
+
+        // Fetch all blocks (we'll aggregate in memory for smoothing)
+        let mut stmt = conn.prepare(
+            "SELECT block_number, block_timestamp, total_blobs, gas_price
+             FROM blocks
+             ORDER BY block_number ASC",
+        )?;
+
+        let rows: Vec<(u64, u64, u64, u64)> = stmt
+            .query_map([], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        // Find BPO2 block
+        let bpo2_block = rows
+            .iter()
+            .find(|(_, ts, _, _)| *ts >= bpo2_timestamp)
+            .map(|(bn, _, _, _)| *bn);
+
+        // Sample and smooth the data
+        let mut labels = Vec::new();
+        let mut blobs = Vec::new();
+        let mut gas_prices = Vec::new();
+        let mut timestamps = Vec::new();
+
+        let mut i = 0;
+        while i < rows.len() {
+            let end = (i + sample_interval as usize).min(rows.len());
+            let chunk = &rows[i..end];
+
+            if !chunk.is_empty() {
+                // Take the middle block as representative
+                let mid = chunk.len() / 2;
+                let (block_num, timestamp, _, _) = chunk[mid];
+
+                // Average the blobs and gas prices in this window
+                let avg_blobs: f64 =
+                    chunk.iter().map(|(_, _, b, _)| *b as f64).sum::<f64>() / chunk.len() as f64;
+                let avg_gas_price: f64 = chunk
+                    .iter()
+                    .map(|(_, _, _, g)| *g as f64 / 1e9)
+                    .sum::<f64>()
+                    / chunk.len() as f64;
+
+                labels.push(block_num);
+                blobs.push(avg_blobs);
+                gas_prices.push(avg_gas_price);
+                timestamps.push(timestamp);
+            }
+
+            i = end;
+        }
+
+        Ok(AllTimeChartData {
+            labels,
+            blobs,
+            gas_prices,
+            timestamps,
+            bpo2_block,
+        })
+    }
+
     /// Get transactions in a time range (for chain profiles).
     pub fn get_transactions_in_time_range(
         &self,
@@ -593,6 +687,16 @@ pub struct ChartData {
     pub labels: Vec<u64>,
     pub blobs: Vec<u64>,
     pub gas_prices: Vec<f64>,
+}
+
+/// All-time chart data with smoothing.
+#[derive(Debug)]
+pub struct AllTimeChartData {
+    pub labels: Vec<u64>,
+    pub blobs: Vec<f64>,
+    pub gas_prices: Vec<f64>,
+    pub timestamps: Vec<u64>,
+    pub bpo2_block: Option<u64>,
 }
 
 /// Blob transaction data with hashes.

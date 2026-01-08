@@ -6,8 +6,6 @@ const BLOCK_OPTIONS = [
   { value: 50, label: "Last 50 blocks" },
   { value: 100, label: "Last 100 blocks" },
   { value: 200, label: "Last 200 blocks" },
-  { value: 500, label: "Last 500 blocks" },
-  { value: 1000, label: "Last 1000 blocks" },
 ];
 
 function Header({ selectedBlocks, onBlocksChange, lastUpdate }) {
