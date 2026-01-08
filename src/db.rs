@@ -530,6 +530,13 @@ impl Database {
     ) -> eyre::Result<AllTimeChartData> {
         let conn = self.connection();
 
+        // BPO1 parameters (before BPO2)
+        const BPO1_TARGET: u64 = 6;
+        const BPO1_MAX: u64 = 9;
+        // BPO2 parameters
+        const BPO2_TARGET: u64 = 10;
+        const BPO2_MAX: u64 = 15;
+
         // Get total block count and range
         let (min_block, max_block): (u64, u64) = conn
             .query_row(
@@ -545,6 +552,8 @@ impl Database {
                 blobs: Vec::new(),
                 gas_prices: Vec::new(),
                 timestamps: Vec::new(),
+                targets: Vec::new(),
+                maxes: Vec::new(),
                 bpo2_block: None,
             });
         }
@@ -577,6 +586,8 @@ impl Database {
         let mut blobs = Vec::new();
         let mut gas_prices = Vec::new();
         let mut timestamps = Vec::new();
+        let mut targets = Vec::new();
+        let mut maxes = Vec::new();
 
         let mut i = 0;
         while i < rows.len() {
@@ -597,10 +608,19 @@ impl Database {
                     .sum::<f64>()
                     / chunk.len() as f64;
 
+                // Determine target/max based on timestamp
+                let (target, max) = if timestamp >= bpo2_timestamp {
+                    (BPO2_TARGET, BPO2_MAX)
+                } else {
+                    (BPO1_TARGET, BPO1_MAX)
+                };
+
                 labels.push(block_num);
                 blobs.push(avg_blobs);
                 gas_prices.push(avg_gas_price);
                 timestamps.push(timestamp);
+                targets.push(target);
+                maxes.push(max);
             }
 
             i = end;
@@ -611,6 +631,8 @@ impl Database {
             blobs,
             gas_prices,
             timestamps,
+            targets,
+            maxes,
             bpo2_block,
         })
     }
@@ -696,6 +718,8 @@ pub struct AllTimeChartData {
     pub blobs: Vec<f64>,
     pub gas_prices: Vec<f64>,
     pub timestamps: Vec<u64>,
+    pub targets: Vec<u64>, // Dynamic target at each point
+    pub maxes: Vec<u64>,   // Dynamic max at each point
     pub bpo2_block: Option<u64>,
 }
 

@@ -7,6 +7,7 @@ import {
   Line,
   AreaChart,
   Area,
+  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -116,11 +117,26 @@ const AllTimeTooltip = ({ active, payload, label }) => {
           Block {label.toLocaleString()}
           {data.timestamp && ` • ${formatTimestamp(data.timestamp)}`}
         </p>
-        <p style={{ ...tooltipStyles.value, color: "#10b981" }}>
+        <p style={{ ...tooltipStyles.value, color: "#60a5fa" }}>
           Avg Blobs: {data.blobs?.toFixed(1)}
         </p>
-        <p style={{ ...tooltipStyles.value, color: "#ffffff" }}>
-          Avg Gas: {data.price?.toFixed(6)} Gwei
+        <p
+          style={{
+            ...tooltipStyles.value,
+            color: "#3b82f6",
+            fontSize: "0.75rem",
+          }}
+        >
+          Target: {data.target}
+        </p>
+        <p
+          style={{
+            ...tooltipStyles.value,
+            color: "#4f46e5",
+            fontSize: "0.75rem",
+          }}
+        >
+          Max: {data.max}
         </p>
       </div>
     );
@@ -154,10 +170,18 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
       blobs: allTimeChartData.blobs?.[index] || 0,
       price: allTimeChartData.gas_prices?.[index] || 0,
       timestamp: allTimeChartData.timestamps?.[index] || 0,
+      target: allTimeChartData.targets?.[index] || 6,
+      max: allTimeChartData.maxes?.[index] || 9,
     }));
   }, [allTimeChartData]);
 
   const bpo2Block = allTimeChartData?.bpo2_block;
+
+  // Get max value for Y axis (highest max value in the data)
+  const allTimeYMax = useMemo(() => {
+    if (!allTimeData.length) return 15;
+    return Math.max(...allTimeData.map((d) => d.max)) + 2;
+  }, [allTimeData]);
 
   // Memoize click handler
   const handleChartClick = useCallback(
@@ -205,7 +229,7 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
           <div className="chart-card chart-card-large fade-in">
             <div className="chart-body-full">
               <ResponsiveContainer width="100%" height={280}>
-                <AreaChart
+                <ComposedChart
                   data={allTimeData}
                   margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
                 >
@@ -217,8 +241,8 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
                       x2="0"
                       y2="1"
                     >
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
@@ -248,6 +272,7 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
                     tickLine={false}
                     tick={{ fill: "#71717a", fontSize: 11 }}
                     width={35}
+                    domain={[0, allTimeYMax]}
                     tickFormatter={(value) => value.toFixed(0)}
                   />
                   <Tooltip content={<AllTimeTooltip />} cursor={false} />
@@ -266,21 +291,44 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
                       }}
                     />
                   )}
+                  {/* Dynamic max line */}
+                  <Line
+                    type="stepAfter"
+                    dataKey="max"
+                    stroke="#4f46e5"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                  />
+                  {/* Dynamic target line */}
+                  <Line
+                    type="stepAfter"
+                    dataKey="target"
+                    stroke="#3b82f6"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                  />
+                  {/* Actual blobs area */}
                   <Area
                     type="monotone"
                     dataKey="blobs"
-                    stroke="#10b981"
+                    stroke="#60a5fa"
                     strokeWidth={1.5}
                     fill="url(#blobsGradient)"
                     dot={false}
                     activeDot={{
                       r: 4,
-                      fill: "#10b981",
+                      fill: "#60a5fa",
                       stroke: "#16161f",
                       strokeWidth: 2,
                     }}
                   />
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>

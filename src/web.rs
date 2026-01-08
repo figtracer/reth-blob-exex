@@ -105,6 +105,8 @@ struct AllTimeChartData {
     blobs: Vec<f64>,         // Smoothed blob counts
     gas_prices: Vec<f64>,    // Smoothed gas prices in Gwei
     timestamps: Vec<u64>,    // Block timestamps
+    targets: Vec<u64>,       // Dynamic target at each point
+    maxes: Vec<u64>,         // Dynamic max at each point
     bpo2_block: Option<u64>, // First block after BPO2 activation
 }
 
@@ -403,6 +405,8 @@ async fn get_all_time_chart(State(db): State<Database>) -> Json<AllTimeChartData
         blobs: chart_data.blobs,
         gas_prices: chart_data.gas_prices,
         timestamps: chart_data.timestamps,
+        targets: chart_data.targets,
+        maxes: chart_data.maxes,
         bpo2_block: chart_data.bpo2_block,
     })
 }
