@@ -203,29 +203,22 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
       {allTimeData.length > 0 && (
         <div className="charts-section">
           <div className="chart-card chart-card-large fade-in">
-            <div className="chart-header">
-              <h2 className="chart-title">All-Time Blob Gas Price</h2>
-              <span className="chart-subtitle">
-                {allTimeData.length > 0 &&
-                  `${allTimeData[0].block.toLocaleString()} - ${allTimeData[allTimeData.length - 1].block.toLocaleString()}`}
-              </span>
-            </div>
-            <div className="chart-body">
+            <div className="chart-body-full">
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart
                   data={allTimeData}
-                  margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 0 }}
                 >
                   <defs>
                     <linearGradient
-                      id="gasGradient"
+                      id="blobsGradient"
                       x1="0"
                       y1="0"
                       x2="0"
                       y2="1"
                     >
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
@@ -254,8 +247,8 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
                     axisLine={{ stroke: "#252530" }}
                     tickLine={false}
                     tick={{ fill: "#71717a", fontSize: 11 }}
-                    width={70}
-                    tickFormatter={(value) => value.toFixed(4)}
+                    width={35}
+                    tickFormatter={(value) => value.toFixed(0)}
                   />
                   <Tooltip content={<AllTimeTooltip />} cursor={false} />
                   {bpo2Block && (
@@ -275,14 +268,14 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
                   )}
                   <Area
                     type="monotone"
-                    dataKey="price"
-                    stroke="#3b82f6"
+                    dataKey="blobs"
+                    stroke="#10b981"
                     strokeWidth={1.5}
-                    fill="url(#gasGradient)"
+                    fill="url(#blobsGradient)"
                     dot={false}
                     activeDot={{
                       r: 4,
-                      fill: "#3b82f6",
+                      fill: "#10b981",
                       stroke: "#16161f",
                       strokeWidth: 2,
                     }}
@@ -485,6 +478,10 @@ function ChartsSection({ chartData, allTimeChartData, onBlockClick }) {
         .chart-body {
           padding: 1rem;
           cursor: pointer;
+        }
+
+        .chart-body-full {
+          padding: 1rem;
         }
 
         .skeleton {
