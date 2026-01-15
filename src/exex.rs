@@ -54,16 +54,9 @@ fn process_chain(db: &Database, chain: &Chain) -> eyre::Result<()> {
         let mut total_blobs = 0u64;
         let mut blob_gas_used = 0u128;
 
-        // todo: remove after BPO2 is fully activated
-        let blob_params = if block_timestamp >= 1767747671 {
-            BlobParams::bpo2()
-        } else {
-            BlobParams::bpo1()
-        };
-
         let blob_gas_price: i64 = block
             .header()
-            .blob_fee(blob_params)
+            .blob_fee(BlobParams::bpo2)
             .unwrap_or(0)
             .try_into()
             .unwrap_or(i64::MAX);
